@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Zira et le Grand Arbre</string>
+    <string name="title_activity_main">Zira et le Grand Arbre</string>
+    <string name="package_name">com.moussadetous.zira</string>
+    <string name="custom_url_scheme">com.moussadetous.zira</string>
+</resources>

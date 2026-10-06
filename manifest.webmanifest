@@ -1,0 +1,17 @@
+{
+  "name": "Zira et le Grand Arbre",
+  "short_name": "Zira",
+  "description": "Incarnes Zira, une petite fourmi, et explores un arbre immense : branches, feuilles, canopée dorée et racines lumineuses.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#0d2018",
+  "theme_color": "#123223",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
