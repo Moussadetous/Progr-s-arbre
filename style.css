@@ -1,0 +1,196 @@
+/* Zira et le Grand Arbre — styles */
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #0d2018;
+  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  touch-action: none;
+  overscroll-behavior: none;
+  position: fixed;
+}
+
+#app, #app canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+.hidden { display: none !important; }
+
+/* ---------- HUD ---------- */
+#hud {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 0 calc(12px + env(safe-area-inset-left));
+  pointer-events: none; z-index: 10;
+}
+#chips { display: flex; gap: 8px; }
+.chip {
+  background: rgba(8, 24, 16, 0.5);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  color: #eef7ee;
+  font-size: 14px; font-weight: 600;
+  padding: 7px 13px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.chip b { font-size: 15px; }
+#hud-right { display: flex; gap: 8px; pointer-events: auto; }
+.rbtn {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(8, 24, 16, 0.5);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  color: #fff; font-size: 19px;
+  cursor: pointer; user-select: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.rbtn:active { transform: scale(0.92); }
+
+/* ---------- indice tutoriel ---------- */
+#hint {
+  position: absolute; bottom: calc(26px + env(safe-area-inset-bottom));
+  left: 50%; transform: translateX(-50%) translateY(16px);
+  background: rgba(8, 24, 16, 0.55);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px;
+  color: #e8f4e6; text-align: center;
+  font-size: 14px; line-height: 1.5;
+  padding: 10px 18px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.6s, transform 0.6s;
+  z-index: 10; max-width: 86vw;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+#hint.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#hint b { color: #ffe9a8; }
+
+/* ---------- toast découverte ---------- */
+#toast {
+  position: absolute; top: calc(64px + env(safe-area-inset-top));
+  left: 50%; transform: translateX(-50%) translateY(-14px) scale(0.96);
+  opacity: 0; pointer-events: none; z-index: 11;
+  transition: opacity 0.45s, transform 0.45s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+.toast-card {
+  display: flex; gap: 12px; align-items: center;
+  background: linear-gradient(135deg, rgba(20, 48, 32, 0.82), rgba(10, 30, 22, 0.82));
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 226, 150, 0.35);
+  border-radius: 18px;
+  padding: 12px 20px 12px 14px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+}
+.toast-icon { font-size: 30px; filter: drop-shadow(0 0 10px rgba(255, 220, 140, 0.6)); }
+.toast-kicker { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #ffdf9a; }
+.toast-title { font-size: 19px; font-weight: 700; color: #fff; }
+
+/* ---------- vignette sous-sol ---------- */
+#vignette {
+  position: absolute; inset: 0; pointer-events: none; z-index: 5;
+  background: radial-gradient(ellipse at center, transparent 42%, rgba(2, 10, 16, 0.85) 100%);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+/* ---------- journal ---------- */
+#journal {
+  position: absolute; inset: 0; z-index: 20;
+  background: rgba(4, 12, 8, 0.55);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 18px;
+}
+.journal-panel {
+  width: min(430px, 94vw); max-height: 84vh;
+  background: linear-gradient(160deg, rgba(22, 50, 34, 0.95), rgba(10, 26, 18, 0.95));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 22px;
+  padding: 16px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.journal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.journal-head h2 { color: #ffe9b0; font-size: 19px; }
+#journal-list { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.jrow {
+  display: flex; gap: 12px; align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px; padding: 10px 12px;
+}
+.jrow.found { border-color: rgba(255, 226, 150, 0.3); background: rgba(255, 226, 150, 0.07); }
+.jicon {
+  width: 42px; height: 42px; min-width: 42px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 21px; background: rgba(0, 0, 0, 0.25);
+}
+.jrow.found .jicon { background: rgba(255, 220, 140, 0.14); }
+.jname { color: #fff; font-weight: 700; font-size: 15px; }
+.jdesc { color: #bcd4c0; font-size: 12.5px; line-height: 1.4; }
+.journal-foot { margin-top: 10px; display: flex; justify-content: center; }
+.ghost {
+  background: none; border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #cfe0cf; border-radius: 999px; padding: 8px 16px;
+  font-size: 13px; cursor: pointer;
+}
+.ghost:active { background: rgba(255, 255, 255, 0.08); }
+
+/* ---------- écran titre ---------- */
+#title-screen {
+  position: absolute; inset: 0; z-index: 30;
+  display: flex; align-items: center; justify-content: center;
+  background:
+    radial-gradient(ellipse at 50% 120%, rgba(52, 120, 70, 0.55), transparent 60%),
+    radial-gradient(ellipse at 50% -20%, rgba(255, 214, 140, 0.25), transparent 55%),
+    linear-gradient(180deg, #10281d 0%, #0b1d16 55%, #071410 100%);
+  transition: opacity 0.9s ease;
+}
+#title-screen.gone { opacity: 0; pointer-events: none; }
+.title-inner { text-align: center; padding: 24px; animation: rise 0.9s ease both; }
+@keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+.title-icon {
+  width: 110px; height: 110px; border-radius: 28px;
+  box-shadow: 0 14px 50px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.12);
+  animation: floaty 4s ease-in-out infinite;
+}
+@keyframes floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+#title-screen h1 {
+  margin-top: 18px;
+  color: #f4ffe9; font-size: clamp(30px, 8vw, 44px); font-weight: 800;
+  text-shadow: 0 4px 26px rgba(120, 255, 170, 0.25);
+  letter-spacing: 0.5px;
+}
+#title-screen h1 .amp { color: #ffd97a; font-style: italic; }
+.tagline { color: #a9c9ad; margin-top: 10px; font-size: 15px; line-height: 1.55; }
+#btn-start {
+  margin-top: 26px;
+  font-size: 17px; font-weight: 700; color: #1d2b14;
+  background: linear-gradient(135deg, #b8e986, #7dc95e);
+  border: none; border-radius: 999px;
+  padding: 15px 34px; cursor: pointer;
+  box-shadow: 0 10px 30px rgba(125, 201, 94, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.25) inset;
+  animation: pulse 2.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 10px 30px rgba(125, 201, 94, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.25) inset; }
+  50% { transform: scale(1.045); box-shadow: 0 14px 40px rgba(125, 201, 94, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.25) inset; }
+}
+.title-hint { margin-top: 20px; color: #7e9c84; font-size: 13px; }
+
+/* ---------- célébration ---------- */
+#flash {
+  position: absolute; inset: 0; z-index: 40;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(255, 236, 170, 0.96), rgba(255, 200, 90, 0.88));
+  color: #4a3a10; text-align: center;
+  font-size: 30px; font-weight: 800; line-height: 1.4;
+  opacity: 0; pointer-events: none;
+}
+#flash .flash-inner { padding: 20px; }
+#flash .flash-inner span { font-size: 16px; font-weight: 500; }
+#flash.go { animation: flashAnim 3.8s ease both; }
+@keyframes flashAnim {
+  0% { opacity: 0; } 12% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; }
+}

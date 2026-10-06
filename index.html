@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Zira et le Grand Arbre</title>
+  <meta name="description" content="Incarnes Zira, une petite fourmi, et explores un arbre immense : branches, feuilles, canopée dorée et racines lumineuses. Un jeu d'exploration et d'émerveillement.">
+  <meta name="theme-color" content="#123223">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Zira">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js" } }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="chips" class="ui hidden">
+      <div class="chip">🍃 <b id="places-count">0</b>/<span id="places-total">8</span></div>
+      <div class="chip">💧 <b id="dew-count">0</b>/<span id="dew-total">15</span></div>
+    </div>
+    <div id="hud-right">
+      <button id="btn-journal" class="rbtn ui hidden" aria-label="Journal">📖</button>
+      <button id="btn-sound" class="rbtn ui hidden" aria-label="Son">🔊</button>
+    </div>
+  </div>
+
+  <div id="hint"></div>
+  <div id="toast"></div>
+  <div id="vignette"></div>
+
+  <!-- Journal -->
+  <div id="journal" class="ui hidden">
+    <div class="journal-panel">
+      <div class="journal-head">
+        <h2>📖 Journal de Zira</h2>
+        <button id="btn-journal-close" class="rbtn" aria-label="Fermer">✕</button>
+      </div>
+      <div id="journal-list"></div>
+      <div class="journal-foot">
+        <button id="btn-reset" class="ghost">Recommencer l'aventure</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Écran titre -->
+  <div id="title-screen" class="ui">
+    <div class="title-inner">
+      <img src="icons/icon-192.png" alt="Zira la fourmi" class="title-icon">
+      <h1>Zira <span class="amp">&</span> le Grand Arbre</h1>
+      <p class="tagline">Une petite fourmi. Un arbre immense.<br>Des merveilles à découvrir.</p>
+      <button id="btn-start">Commencer l'aventure</button>
+      <p class="title-hint">🐜 Glisse ton doigt pour guider Zira sur les branches</p>
+    </div>
+  </div>
+
+  <div id="flash"><div class="flash-inner">🌟<br>Zira a tout exploré !<br><span>Merci d'avoir voyagé avec elle.</span></div></div>
+
+  <script type="module" src="src/main.js"></script>
+  <script>
+    // Cache hors-ligne pour la version web (ignoré dans l'APK)
+    if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+      addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
+    }
+  </script>
+</body>
+</html>

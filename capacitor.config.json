@@ -1,0 +1,11 @@
+{
+  "appId": "com.moussadetous.zira",
+  "appName": "Zira et le Grand Arbre",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": true
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

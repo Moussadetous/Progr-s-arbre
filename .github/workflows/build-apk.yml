@@ -1,0 +1,51 @@
+name: APK Android
+
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Installer les dépendances et préparer www/
+        run: |
+          npm install --no-audit --no-fund
+          npm run www
+
+      - name: Synchroniser le projet Android
+        run: npx cap sync android
+
+      - name: Construire l'APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon -Dorg.gradle.jvmargs=-Xmx2g
+
+      - name: Renommer l'APK
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk "Zira-et-le-Grand-Arbre.apk"
+          ls -lh "Zira-et-le-Grand-Arbre.apk"
+
+      - name: Publier l'artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Zira-et-le-Grand-Arbre-APK
+          path: Zira-et-le-Grand-Arbre.apk
+          retention-days: 30

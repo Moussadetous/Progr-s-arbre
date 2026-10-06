@@ -1,0 +1,21 @@
+# Dépendances Node
+node_modules/
+
+# Dossier web généré pour Capacitor
+www/
+
+# macOS
+.DS_Store
+
+# Android — sorties de build et fichiers locaux
+android/.gradle/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/build/
+android/local.properties
+android/.idea/
+android/*.iml
+android/.kotlin/
+
+# Divers
+*.log
