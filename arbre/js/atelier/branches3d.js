@@ -6,7 +6,7 @@ import { texturesEcorce } from './textures.js';
 const bruit = creerBruit(3, 256);
 
 // Construit un tube le long des repères d'une courbe
-function construireTube(frames, { radial = 30, repetitions = 3, mousse = true, bosses = 0.07, grain = 5 }) {
+export function construireTube(frames, { radial = 30, repetitions = 3, mousse = true, bosses = 0.07, grain = 5 }) {
   const n = frames.length;
   const pos = [];
   const nor = [];
@@ -56,7 +56,7 @@ function construireTube(frames, { radial = 30, repetitions = 3, mousse = true, b
 }
 
 // Matériau d'écorce avec mousse : le vert se mélange à la couleur du bois là où l'attribut « mousse » est fort
-function materiauEcorce(textures) {
+export function materiauEcorce(textures) {
   const m = new THREE.MeshStandardMaterial({
     map: textures.map,
     normalMap: textures.normalMap,

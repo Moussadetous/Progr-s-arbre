@@ -215,7 +215,7 @@ export function creerServeur({ racine, donnees }) {
   // Fichiers du client (jamais de répertoire parent)
   function servirStatique(res, chemin) {
     const demande = chemin === '/' ? '/index.html' : chemin;
-    const publique = demande === '/index.html' || demande === '/atelier.html' || PREFIXES_PUBLICS.some((p) => demande.startsWith(p));
+    const publique = demande === '/index.html' || demande === '/atelier.html' || demande === '/monde.html' || PREFIXES_PUBLICS.some((p) => demande.startsWith(p));
     if (!publique) return false;
     const fichier = path.normalize(path.join(racine, demande));
     if (!fichier.startsWith(racine + path.sep) || !fs.existsSync(fichier) || !fs.statSync(fichier).isFile()) {

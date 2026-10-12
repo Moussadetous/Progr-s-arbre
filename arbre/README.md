@@ -155,3 +155,12 @@ npm test
 4. Caméra qui contourne les rameaux ; découpage par zones de l'arbre.
 5. Stockage (base de données et stockage des vidéos) et transcodage.
 6. Sons (réutiliser `src/audio.js`), puis application mobile (réutiliser Capacitor).
+
+
+## Le monde (`monde.html`)
+
+Le cœur du jeu : un tronc, la capitale (la place autour du tronc, sans feuilles), 4 branches par défaut.
+- Une personne = **une grande feuille**, à un emplacement fixe d'une branche (alternance gauche/droite).
+- Une branche s'allonge et s'épaissit avec ses feuilles ; quand les branches sont pleines, **une nouvelle branche pousse sur le tronc**.
+- La boule suit un graphe : branches, tige, feuille, place de la capitale, tronc. Toucher une feuille y emmène la boule.
+- Les arrivées sont simulées (+1, +5, +20, auto). Règles et chemins : `shared/monde-arbre.js`, tests : `test/monde.test.js`.
