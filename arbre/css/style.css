@@ -1,4 +1,4 @@
-/* L'Arbre — interface dessin animé : contours épais, ombres "posées", couleurs franches */
+/* L'Arbre — interface dessin animé : contours épais, ombres « posées », couleurs franches */
 :root {
   --encre: #2b2a1f;
   --creme: #fff8e6;
@@ -110,16 +110,44 @@ label {
   font-size: 16px;
   white-space: nowrap;
 }
-
+.mode {
+  align-self: center;
+  background: rgba(255, 248, 230, .9);
+  border: 2px solid var(--encre);
+  border-radius: 999px;
+  padding: 2px 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
 #hud .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  width: 100%;
+  justify-content: flex-end;
 }
 #hud .actions button {
   padding: 8px 12px;
   font-size: 15px;
 }
+
+/* ---------- aide ---------- */
+.aide {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 16;
+  width: min(620px, calc(100vw - 24px));
+  background: rgba(255, 248, 230, .95);
+  border: 3px solid var(--encre);
+  border-radius: 18px;
+  box-shadow: 0 4px 0 var(--encre);
+  padding: 10px 16px;
+  font-size: 15px;
+  pointer-events: none;
+}
+.aide p { margin: 4px 0; }
 
 /* ---------- étiquettes ---------- */
 .etiquette {
@@ -263,7 +291,7 @@ label {
 /* ---------- notifications ---------- */
 #toasts {
   position: fixed;
-  top: 92px;
+  top: 110px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 40;
@@ -297,8 +325,10 @@ label {
 /* ---------- petits écrans ---------- */
 @media (max-width: 640px) {
   .pastille { font-size: 14px; padding: 5px 12px; }
+  .mode { font-size: 12px; }
   #hud .actions button { padding: 7px 9px; font-size: 14px; }
   .carte-connexion h1 { font-size: 44px; }
-  /* sur téléphone, les notifications ne doivent pas masquer la barre du haut */
-  #toasts { top: auto; bottom: 16px; }
+  .aide { font-size: 13px; bottom: 8px; }
+  /* sur téléphone, les notifications ne masquent pas la barre du haut */
+  #toasts { top: auto; bottom: 150px; }
 }

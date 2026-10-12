@@ -1,133 +1,157 @@
-# 🌳 L'Arbre — prototype de réseau social 3D
+# 🌳 L'Arbre — réseau social 3D
 
-Un réseau social dans un grand arbre, en ambiance dessin animé.
+Un arbre gigantesque, en ambiance dessin animé. **Chaque personne est une feuille** : sa maison.
+Plus on est nombreux, plus l'arbre pousse. Les branches gonflent avec les feuilles qu'elles portent.
+Au sommet du tronc, la **capitale**, où remontent toutes les vidéos publiées.
 
-- **Chaque personne qui se connecte reçoit une feuille.** Plus il y a de monde, plus l'arbre pousse.
-- **Les branches gonflent avec le poids des feuilles qu'elles portent.**
-- **Au sommet du tronc se trouve la capitale**, où remontent toutes les vidéos publiées.
-- Sur sa feuille, chacun a **son écran** (les vidéos des autres) et peut **publier**.
-- La fourmi de chacun **se promène** sur les branches, de nœud en nœud.
+Dans l'arbre, chacun est une **petite boule**. Elle roule sur les branches, entre et sort de sa feuille,
+et se promène de rameau en rameau.
 
-Ce dossier est le **nouveau départ** du projet. L'ancien jeu (`Zira et le Grand Arbre`) reste à la racine du dépôt, intact.
+## Lancer le projet
 
-## ▶️ Lancer le prototype
+Il fonctionne dans deux modes, choisis automatiquement au démarrage.
 
-Prérequis : Node.js 20 ou plus. Aucune dépendance npm.
+### 1. Avec le serveur (monde partagé)
+
+Prérequis : Node.js 20 ou plus. Aucune dépendance à installer.
 
 ```bash
 cd arbre
-npm start          # http://localhost:3000
-npm test           # règles de croissance, monde, persistance
+npm start                 # http://localhost:3000
 ```
 
-Variables facultatives : `PORT` (3000 par défaut) et `ARBRE_DONNEES` (dossier des données, `arbre/data/` par défaut, ignoré par git).
+Variables facultatives : `PORT` (3000 par défaut), `ARBRE_DONNEES` (dossier des données ; `data/` par défaut, ignoré par git).
 
-## ✅ Ce que fait le prototype
+### 2. Sans serveur (monde local)
 
-| Fonction | État |
-|---|---|
-| Arbre procédural déterministe (tronc, branches, rameaux, capitale) | ✅ |
-| Connexion par pseudo ; une nouvelle personne = une nouvelle feuille | ✅ |
-| Croissance : rameaux qui poussent avec le nombre d'utilisateurs | ✅ |
-| Épaisseur qui augmente avec le poids des feuilles | ✅ |
-| Arrivée des feuilles animée et notifiée en temps réel (SSE) | ✅ |
-| Fourmi qui marche de nœud en nœud (clic → plus court chemin) | ✅ |
-| « Ma feuille », « Capitale », « Écran » | ✅ |
-| Publication d'une vidéo (mp4, webm, mov, ogv ; 150 Mo max) | ✅ |
-| Lecture avec seek (requêtes `Range`) | ✅ |
-| Carte d'une feuille : ses vidéos, aller sur sa feuille | ✅ |
-| Compte et feuille conservés après rechargement | ✅ |
+Le client seul suffit : n'importe quel hébergement statique convient (GitHub Pages, `python3 -m http.server`…).
+Le navigateur détecte l'absence d'API et passe en mode local : le monde est alors sur cet appareil, avec des feuilles
+de démonstration. Les ES modules ne se chargent pas depuis un fichier ouvert directement (`file://`) :
+il faut un petit serveur de fichiers, même sans l'API.
 
-## 🌱 Les règles de croissance
+```bash
+cd arbre
+python3 -m http.server 8000      # http://localhost:8000  → mode « sans serveur »
+```
 
-Elles sont dans `shared/regles.js` et `shared/treegen.js`. Le serveur décide ; le navigateur affiche.
+Le même code sert les deux modes : seul le « backend » change (`js/reseau/`).
 
-1. **L'arbre est fixe pour tout le monde.** Une graine unique (`GRAINE`) produit 468 nœuds : 15 pour le tronc, le reste pour les branches. Le serveur et le navigateur génèrent exactement le même arbre.
-2. **L'arbre pousse par étages.** Le tronc d'abord, puis les branches principales, puis les rameaux. L'ordre d'apparition est `ordre` dans `treegen.js`.
-3. **Nombre de rameaux visibles** : `K = min(468, 40 + 19 × √utilisateurs)`. Il y a 40 rameaux visibles sans personne ; l'arbre est complet vers 500 personnes.
-4. **Une feuille va sur la brindille visible la moins chargée.** Les feuilles se répartissent au lieu de s'entasser ; en cas d'égalité, le point de départ dépend du pseudo.
-5. **Poids** : nombre de feuilles portées par un nœud et par tous ses rameaux. Le poids remonte jusqu'au tronc.
-6. **Épaisseur** : `1 + 0,22 × √poids`, plafonnée à ×4. Une branche chargée gonfle.
-7. **Animation** : un rameau pousse depuis son parent, une feuille arrive avec un petit rebond.
+## Commandes
 
-## 🧱 Architecture
+| | Ordinateur | Téléphone |
+|---|---|---|
+| Marcher | ZQSD ou flèches (par rapport à la caméra) | glisser un doigt |
+| Courir | Maj | — |
+| Aller quelque part | clic sur une branche ou une feuille | tap |
+| Tourner la caméra | glisser à la souris | deux doigts |
+| Zoomer | molette | deux doigts (pincement) |
+
+Boutons : **Ma feuille**, **Capitale**, **Écran** (vidéos des autres), **Publier**.
+
+## Ce qu'il y a dans le monde
+
+- **Une échelle réelle, en mètres** : le tronc fait 160 m (9 m de rayon à la base), le sommet porte la capitale.
+  Une feuille-maison fait 3 m, la boule 22 cm. Un brouillard cache le lointain : on ne voit jamais tout l'arbre.
+- **11 354 nœuds** générés par une graine fixe ; le serveur et le navigateur calculent exactement le même arbre.
+- **Une feuille par personne** : au moment de la connexion, elle est posée sur le rameau le moins chargé.
+
+## Les règles
+
+Dans `shared/regles.js` (croissance) et `js/monde3d/deplacement.js` (mouvement).
+
+**Croissance**
+- Les nœuds sont poussés dans un ordre fixe : le tronc, puis les branches couche par couche.
+  Il y a `k0` = 2 292 nœuds au départ ; le reste pousse avec la population, jusqu'à l'arbre complet vers **1 000 personnes**.
+- Épaisseur d'une branche : `1 + 0,06 × √poids`, plafonnée à ×2,5. Le poids d'un nœud est le nombre de feuilles portées par ce nœud et ses rameaux.
+- Animation : une branche s'allonge depuis son parent, puis s'épaissit ; une feuille arrive avec un petit rebond.
+
+**Déplacement**
+- La boule roule sur la surface des branches : sa normale suit la courbe (transport parallèle), et elle ne tourne que sur le chemin parcouru (sa surface ne glisse pas plus vite qu'elle). Elle ne saute pas.
+- À chaque fourche, elle prend la branche qui correspond à la direction demandée (cosinus minimal 0,2 ; pour entrer dans une feuille, 0,55).
+- Une demande d'aller quelque part est calculée par plus court chemin (Dijkstra) sur le graphe des rameaux.
+- Dans sa feuille, la boule se déplace librement, sans sortir de la forme de la feuille. Elle quitte la feuille par le pétiole,
+  et rejoint toujours le pied avant de sortir.
+- Vitesse : 6 m/s en marche, 14 m/s en course.
+
+## Architecture
 
 ```
 arbre/
+├── index.html, css/style.css       la page
+├── js/                             le client (navigateur)
+│   ├── main.js                     démarrage, connexion, boucle, gestes et actions
+│   ├── reseau/                     le monde : serveur (serveur.js) ou local (local.js), choisi par index.js
+│   ├── monde3d/
+│   │   ├── arbre3d.js              rendu de l'arbre (instances par rang, croissance animée, feuilles, capitale)
+│   │   ├── graphe.js               graphe des rameaux et plus court chemin
+│   │   ├── deplacement.js          la logique de la boule (pur calcul, testée)
+│   │   └── boule.js                la petite boule
+│   ├── camera.js, entrees.js, decor.js, ui.js
+├── shared/                         partagé par le serveur et le navigateur
+│   ├── arbre.js                    génération de l'arbre (graine fixe)
+│   ├── geometrie.js                vecteurs, placement des feuilles
+│   ├── regles.js                   croissance, épaisseur, poids
+│   └── monde.js                    les utilisateurs, les feuilles, les vidéos (stockage injecté)
 ├── server/
-│   ├── index.js        HTTP, SSE, vidéos (upload et lecture par Range), fichiers statiques
-│   └── monde.js        utilisateurs, feuilles, vidéos, sauvegarde JSON
-├── shared/             ← partagé serveur / navigateur
-│   ├── treegen.js      génération de l'arbre (pure géométrie, sans three.js)
-│   └── regles.js       croissance, épaisseur, poids
-├── client/
-│   ├── index.html, style.css
-│   └── js/
-│       ├── main.js         démarrage, connexion, temps réel, actions
-│       ├── arbre3d.js      tronc, branches, feuilles, capitale (InstancedMesh + animation)
-│       ├── graphe.js       graphe de marche et plus court chemin (Dijkstra)
-│       ├── promeneur.js    la fourmi, qui marche le long du graphe
-│       ├── camera.js       caméra en orbite
-│       ├── saisie.js       tap, glisser, molette, pincement
-│       ├── cartoon.js      ciel, nuages, herbe, ombrage à paliers
-│       ├── api.js          appels HTTP et flux SSE
-│       └── ui.js           panneaux, notifications, lecteur
-├── test/monde.test.js
-└── package.json
+│   ├── serveur.js                  API HTTP, temps réel (SSE), vidéos, fichiers du client
+│   ├── stockage.js                 le monde sur disque (JSON)
+│   └── index.js                    démarrage : npm start
+├── test/                           tests (npm test)
+└── vendor/three.module.js          three.js r160, fourni dans le projet
 ```
 
-Le dépôt fournit `vendor/three.module.js` (three.js r160), que le serveur sert tel quel depuis la racine.
-
-### API
+### API du serveur
 
 | Méthode | Chemin | Rôle |
 |---|---|---|
-| `POST` | `/api/connexion` | `{ pseudo, token? }` → crée la feuille ou reprend le compte (avec son jeton) |
-| `GET` | `/api/moi` | utilisateur connecté (en-tête `Authorization: Bearer <jeton>`) |
-| `GET` | `/api/monde` | instantané : compteurs, poids, feuilles, capitale |
+| `POST` | `/api/connexion` | `{ pseudo, token? }` → crée la feuille, ou reprend le compte avec son jeton |
+| `GET` | `/api/moi` | la personne connectée (en-tête `Authorization: Bearer <jeton>`) |
+| `GET` | `/api/monde` | l'état : compteurs, poids, feuilles, capitale |
 | `GET` | `/api/evenements` | flux SSE : `monde`, `feuille`, `video` |
 | `GET` | `/api/videos` | toutes les vidéos publiques, les plus récentes d'abord |
 | `POST` | `/api/videos` | publication : corps binaire, `Content-Type` = type vidéo, en-têtes `X-Titre` et `X-Description` (URL-encodés) |
-| `GET` | `/medias/<id>.<ext>` | lecture de la vidéo, avec `Range` |
+| `GET` | `/medias/<id>.<ext>` | lecture, avec les requêtes `Range` |
+
+Les fichiers publics sont `index.html`, `css/`, `js/`, `shared/` et `vendor/`. Le code du serveur et les données ne sont jamais servis.
 
 ### Tests
 
-`npm test` vérifie : l'arbre est déterministe, le tronc pousse en premier, la croissance est monotone, le poids remonte bien, les feuilles se répartissent, un pseudo pris exige le jeton, les pseudos invalides sont refusés, le poids du tronc vaut le nombre de feuilles, et le monde survit à un redémarrage.
+```bash
+npm test
+```
 
-Le navigateur a aussi été testé de bout en bout (Chromium headless) : connexion, marche jusqu'à la capitale, publication et lecture d'une vidéo, clic sur une feuille, « Ma feuille », rechargement avec reconnexion, et un affichage sur téléphone (390 px).
+- `arbre.test.js` : la génération, les rangs, la croissance, le placement des feuilles.
+- `monde.test.js` : les pseudos, la répartition des feuilles, le poids, la persistance, les vidéos.
+- `deplacement.test.js` : la boule suit une branche, choisit sa fourche, reste continue (pas de téléportation),
+  entre et sort de sa feuille, et s'arrête au sommet sans sauter.
+- `serveur.test.js` : les routes, l'authentification, la publication et la lecture par tranches, les fichiers publics, le temps réel.
 
-Pour ces tests, `window.__arbre` expose la fourmi, le promeneur, l'arbre et la caméra. C'est un point de débogage, sans usage pour le visiteur.
+## Ce qui vient de l'ancien jeu (Zira)
 
-## ♻️ Ce qui vient de l'ancien projet (Zira)
-
-| Ancien fichier | Ce qu'on en garde |
+| Ancien | Ce qu'on en garde |
 |---|---|
-| `src/tree.js` | L'idée de l'arbre procédural déterministe (même graine partout) et du graphe de navigation entre nœuds. Réécrit en pur calcul pour tourner aussi côté serveur (`shared/treegen.js`). |
-| `src/rng.js` | Le générateur `mulberry32`, repris tel quel dans `treegen.js`. |
-| `src/leaves.js` | Les feuilles en `InstancedMesh` et le balancement au vent (`arbre3d.js`). |
-| `src/movement.js` | La marche sur un graphe de nœuds (`graphe.js`, `promeneur.js`), avec plus court chemin ajouté. |
-| `src/util.js` | L'amortissement indépendant du framerate (`amort`, `arbre3d.js`). |
-| `src/camera.js` | Le principe de caméra qui suit la fourmi, devenu une caméra en orbite (`camera.js`). |
-| `vendor/three.module.js` | Utilisé tel quel, servi par le serveur. |
-| `src/audio.js` | Non branché pour l'instant ; réutilisable pour les notifications sonores. |
-| `style.css`, `manifest`, `sw.js`, `android/`, Capacitor | Non repris pour l'instant. À réutiliser pour l'application mobile plus tard. |
-| `src/landmarks.js`, `decor.js`, `ant.js`, `ui.js` (journal, gouttes, lucioles) | Abandonnés : logique de jeu, sans rapport avec le réseau social. |
+| `src/tree.js` | l'idée d'un arbre procédural déterministe et du graphe de navigation (réécrit en pur calcul, partagé avec le serveur) |
+| `src/rng.js` | le générateur `mulberry32` |
+| `src/leaves.js` | les feuilles en instances et le balancement au vent |
+| `src/movement.js` | la marche sur un graphe de nœuds, enrichie (normale de surface, fourches, feuilles) |
+| `src/camera.js` | le principe d'une caméra qui suit le personnage |
+| `vendor/three.module.js` | three.js, copié dans le projet |
+| `src/audio.js`, Capacitor, PWA | pas encore utilisés (sons, application mobile) |
 
-## ⚠️ Limites du prototype
+## Limites
 
-- **Pas de vraie authentification.** Un pseudo ne se reprend que depuis le navigateur qui l'a créé (jeton dans `localStorage`). Sur un autre appareil, ou après avoir vidé le navigateur, ce pseudo reste pris.
-- **Vidéos** : stockées sur le disque du serveur, sans transcodage, sans contrôle du contenu, sans modération.
-- **Base** : un fichier JSON réécrit à chaque changement. Ça tient pour un prototype, pas pour des milliers de personnes ni plusieurs serveurs.
-- **Temps réel** : à chaque arrivée, les poids (468 nombres) sont renvoyés à tout le monde. Acceptable ici ; à réduire ensuite.
-- **Capacité** : l'arbre est complet vers 500 personnes. Au-delà, la croissance s'arrête. Il faudra agrandir la génération dans `treegen.js`.
-- **Serveur requis** : le site ne fonctionne pas sur GitHub Pages seul, car il a besoin de l'API.
-- **Testé** : bureau et téléphone en Chromium headless (rendu logiciel). Pas encore sur un vrai téléphone ni avec une vraie carte graphique.
+- **Pas d'authentification.** Un pseudo ne se reprend que depuis le navigateur qui l'a créé (jeton dans `localStorage`).
+- **Vidéos** : fichiers sur le disque du serveur ; sans transcodage, sans modération.
+- **Stockage** : un fichier JSON réécrit à chaque changement. Suffisant pour un prototype, pas pour des milliers de personnes ni plusieurs serveurs.
+- **Caméra** : elle se rapproche quand une branche lui coupe la vue, mais ne contourne pas encore les rameaux.
+- **Rendu** : tous les nœuds poussés sont dessinés (~11 000 au maximum). Un découpage par zones (LOD) viendra si les téléphones peinent.
+- **Le mode local** partage son monde seulement avec cet appareil.
 
-## 🧭 Pistes suivantes
+## Pistes suivantes
 
 1. Comptes réels (mot de passe ou lien magique).
-2. Écran vidéo visible directement sur la feuille, en 3D.
-3. Capitale en vraie salle de projection (grille de vidéos, accès depuis les branches).
-4. Base de données et stockage objet pour les vidéos, avec transcodage.
-5. Modération et quotas.
+2. L'écran de la feuille : une vraie vidéo projetée sur la feuille, visible depuis les branches.
+3. La capitale : une vraie salle de projection, avec une grille de vidéos.
+4. Caméra qui contourne les rameaux ; découpage par zones de l'arbre.
+5. Stockage (base de données et stockage des vidéos) et transcodage.
 6. Sons (réutiliser `src/audio.js`), puis application mobile (réutiliser Capacitor).

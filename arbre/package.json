@@ -1,7 +1,7 @@
 {
   "name": "arbre",
-  "version": "0.1.0",
-  "description": "L'Arbre — prototype de réseau social 3D : chaque utilisateur est une feuille",
+  "version": "0.2.0",
+  "description": "L'Arbre — réseau social 3D : chaque personne est une feuille d'un arbre géant",
   "private": true,
   "type": "module",
   "engines": {

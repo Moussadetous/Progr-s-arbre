@@ -4,27 +4,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>L'Arbre</title>
-  <meta name="description" content="Un réseau social en 3D : chaque personne est une feuille, et plus on est nombreux, plus l'arbre grandit.">
+  <meta name="description" content="Un réseau social en 3D : chaque personne est une feuille d'un arbre géant. Plus on est nombreux, plus l'arbre grandit.">
   <meta name="theme-color" content="#4fb8ff">
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/client/style.css">
+  <link rel="stylesheet" href="./css/style.css">
   <script type="importmap">
-    { "imports": { "three": "/vendor/three.module.js" } }
+    { "imports": { "three": "./vendor/three.module.js" } }
   </script>
 </head>
 <body>
   <canvas id="scene"></canvas>
 
-  <!-- Étiquettes qui suivent la fourmi et la capitale -->
-  <div id="etiquette-moi" class="etiquette cache"></div>
+  <!-- Étiquettes : le nom de la boule, et la capitale -->
+  <div id="etiquette-boule" class="etiquette cache"></div>
   <div id="etiquette-capitale" class="etiquette capitale">👑 Capitale</div>
   <div id="bulle" class="bulle cache"></div>
 
   <header id="hud" class="cache">
     <div class="pastille" id="compte-texte">🍃 0 feuille</div>
+    <div class="mode" id="mode"></div>
     <nav class="actions">
       <button data-action="maison">🏠 Ma feuille</button>
       <button data-action="capitale">👑 Capitale</button>
@@ -32,6 +33,12 @@
       <button data-action="publier" class="principal">⬆ Publier</button>
     </nav>
   </header>
+
+  <!-- Aide sur les commandes, affichée après la connexion -->
+  <aside id="aide" class="aide cache">
+    <p><b>Ordinateur</b> : ZQSD ou flèches pour marcher · Maj pour courir · clic pour aller là · glisser pour tourner · molette pour zoomer</p>
+    <p><b>Téléphone</b> : glisse un doigt pour marcher · tape pour aller là · deux doigts pour tourner et zoomer</p>
+  </aside>
 
   <!-- Connexion -->
   <section id="connexion" class="ecran cache" aria-labelledby="titre-connexion">
@@ -48,7 +55,7 @@
     </div>
   </section>
 
-  <!-- Vidéos : écran de la feuille, capitale, ou une feuille -->
+  <!-- Vidéos : écran, capitale, ou la feuille d'une personne -->
   <section id="panneau-videos" class="panneau cache" aria-labelledby="videos-titre">
     <header class="entete">
       <div>
@@ -109,6 +116,6 @@
 
   <div id="toasts" aria-live="polite"></div>
 
-  <script type="module" src="/client/js/main.js"></script>
+  <script type="module" src="./js/main.js"></script>
 </body>
 </html>

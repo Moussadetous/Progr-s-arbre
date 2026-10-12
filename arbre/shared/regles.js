@@ -1,17 +1,19 @@
 // Règles de croissance de l'arbre.
 // Partagées : le serveur s'en sert pour décider, le navigateur pour afficher.
 
-export const BRANCHES_DEPART = 40; // rameaux visibles quand il n'y a encore personne
-export const BRANCHES_PAR_RACINE = 19; // rameaux gagnés à chaque racine carrée d'utilisateur (arbre complet vers 500)
+// Population pour laquelle l'arbre est entièrement poussé
+export const POPULATION_COMPLETE = 1000;
 
-// Combien de nœuds de l'arbre sont poussés pour ce nombre d'utilisateurs
-export function nbBranchesVisibles(nbUtilisateurs, total) {
-  return Math.min(total, Math.round(BRANCHES_DEPART + BRANCHES_PAR_RACINE * Math.sqrt(nbUtilisateurs)));
+// Nombre de nœuds poussés (visibles) pour ce nombre de personnes.
+// Au départ, le tronc et les deux premiers étages sont là ; le reste pousse avec la population.
+export function nbVisibles(utilisateurs, arbre) {
+  const f = Math.min(1, Math.sqrt(utilisateurs / POPULATION_COMPLETE));
+  return Math.round(arbre.k0 + (arbre.N - arbre.k0) * f);
 }
 
-// Épaisseur d'une branche selon son poids : elle gonfle avec les feuilles qu'elle porte (plafonnée à x4)
+// Épaisseur d'une branche selon son poids : elle gonfle avec les feuilles qu'elle porte (plafond x2,5)
 export function facteurEpaisseur(poids) {
-  return Math.min(4, 1 + 0.22 * Math.sqrt(poids));
+  return Math.min(2.5, 1 + 0.06 * Math.sqrt(poids));
 }
 
 // Poids d'un nœud = feuilles posées sur lui et sur tous les rameaux qui en partent.

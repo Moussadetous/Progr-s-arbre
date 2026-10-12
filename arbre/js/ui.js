@@ -1,4 +1,4 @@
-// Interface en HTML : connexion, compteurs, notifications, vidéos, publication et lecteur.
+// Interface en HTML : connexion, compteurs, mode, aide, notifications, vidéos, publication et lecteur.
 const $ = (id) => document.getElementById(id);
 const TAILLE_MAX = 150 * 1024 * 1024; // même limite que le serveur
 
@@ -21,7 +21,13 @@ export function initialiser() {
 
 export function compteurs({ utilisateurs, noeudsVisibles, noeudsTotal }) {
   const feuilles = `${utilisateurs} feuille${utilisateurs > 1 ? 's' : ''}`;
-  $('compte-texte').textContent = `🍃 ${feuilles} · 🌿 ${noeudsVisibles}/${noeudsTotal} rameaux`;
+  $('compte-texte').textContent = `🍃 ${feuilles} · 🌿 ${noeudsVisibles}/${noeudsTotal} rameaux poussés`;
+}
+
+export function afficherMode(nom) {
+  $('mode').textContent = nom === 'serveur'
+    ? '🌐 Monde partagé (serveur)'
+    : '💾 Sans serveur : monde local sur cet appareil';
 }
 
 const MAX_TOASTS = 4;
@@ -34,6 +40,14 @@ export function toast(texte, duree = 4000) {
   while (conteneur.children.length > MAX_TOASTS) conteneur.firstElementChild.remove();
   setTimeout(() => el.classList.add('sort'), duree);
   setTimeout(() => el.remove(), duree + 500);
+}
+
+// Aide sur les commandes : affichée après la connexion, puis elle s'efface
+let minuterieAide = null;
+export function afficherAide() {
+  ouvrir('aide');
+  clearTimeout(minuterieAide);
+  minuterieAide = setTimeout(() => fermer('aide'), 14000);
 }
 
 // ---------- connexion ----------
@@ -134,15 +148,15 @@ export function afficherVideos({ titre, sousTitre, videos, surLecture }) {
 
 // ---------- lecteur ----------
 
-export function lire(v) {
+export function lire(v, url) {
   fermer('panneau-videos');
   const el = $('lecteur-video');
-  el.src = `/medias/${v.id}.${v.ext}`;
+  el.src = url;
   $('lecteur-titre').textContent = v.titre;
   $('lecteur-meta').textContent = `${v.auteurPseudo} · ${dateCourte(v.creeLe)}`;
   $('lecteur-description').textContent = v.description || '';
   ouvrir('panneau-lecteur');
-  el.play().catch(() => { /* lecture refusée par le navigateur : l'utilisateur appuie sur play */ });
+  el.play().catch(() => { /* lecture refusée par le navigateur : l'utilisateur appuie sur lecture */ });
 }
 
 export function arreterLecture() {
@@ -160,7 +174,7 @@ export function ouvrirPublier() {
   ouvrir('panneau-publier');
 }
 
-// surPublier({ fichier, titre, description }) renvoie une promesse : la vidéo publiée
+// surPublier({ fichier, titre, description }) renvoie une promesse
 export function brancherPublier(surPublier) {
   const form = $('form-publier');
   form.addEventListener('submit', async (e) => {

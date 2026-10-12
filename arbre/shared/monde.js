@@ -1,11 +1,7 @@
-// Le monde : utilisateurs, feuilles (une par utilisateur) et vidéos publiques.
-// Le serveur est l'autorité : c'est lui qui décide où pousse une feuille et combien l'arbre a grandi.
-// La mémoire est sauvegardée dans un simple fichier JSON (suffisant pour un prototype).
-import fs from 'node:fs';
-import path from 'node:path';
-import crypto from 'node:crypto';
-import { genererArbre } from '../shared/treegen.js';
-import { nbBranchesVisibles, calculerPoids } from '../shared/regles.js';
+// Le monde : utilisateurs, feuilles (une par personne) et vidéos publiques.
+// Logique pure, partagée par le serveur et le mode local (navigateur).
+// Le stockage est injecté : fichier JSON côté serveur, localStorage côté navigateur.
+import { nbVisibles, calculerPoids } from './regles.js';
 
 export const MIMES_VIDEO = {
   'video/mp4': 'mp4',
@@ -13,12 +9,22 @@ export const MIMES_VIDEO = {
   'video/quicktime': 'mov',
   'video/ogg': 'ogv',
 };
+export const TAILLE_MAX_VIDEO = 150 * 1024 * 1024;
 
 export class Erreur extends Error {
   constructor(statut, message) {
     super(message);
     this.statut = statut;
   }
+}
+
+// Identifiant unique (fonctionne aussi hors contexte sécurisé, contrairement à randomUUID)
+export function uuid() {
+  const o = crypto.getRandomValues(new Uint8Array(16));
+  o[6] = (o[6] & 0x0f) | 0x40;
+  o[8] = (o[8] & 0x3f) | 0x80;
+  const h = Array.from(o, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
 // Empreinte simple d'un texte : sert à répartir les feuilles de façon stable
@@ -29,35 +35,33 @@ function empreinte(texte) {
 }
 
 export class Monde {
-  constructor({ fichier = null, surChangement = () => {} } = {}) {
-    this.fichier = fichier;
+  constructor({ arbre, stockage = null, surChangement = () => {} }) {
+    this.arbre = arbre;
+    this.stockage = stockage;
     this.surChangement = surChangement;
-    this.arbre = genererArbre();
     this.utilisateurs = [];
     this.feuilles = [];
     this.videos = [];
-    this.charger();
-  }
-
-  charger() {
-    if (!this.fichier || !fs.existsSync(this.fichier)) return;
-    const donnees = JSON.parse(fs.readFileSync(this.fichier, 'utf8'));
-    this.utilisateurs = donnees.utilisateurs || [];
-    this.feuilles = donnees.feuilles || [];
-    this.videos = donnees.videos || [];
+    const donnees = stockage ? stockage.lire() : null;
+    if (donnees) {
+      this.utilisateurs = donnees.utilisateurs || [];
+      this.feuilles = donnees.feuilles || [];
+      this.videos = donnees.videos || [];
+    }
+    // Nombre de feuilles par nœud (la « charge » de chaque brindille)
+    this.charge = new Map();
+    for (const f of this.feuilles) this.charge.set(f.noeud, (this.charge.get(f.noeud) || 0) + 1);
   }
 
   sauver() {
-    if (!this.fichier) return;
-    fs.mkdirSync(path.dirname(this.fichier), { recursive: true });
-    const tmp = `${this.fichier}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify({ utilisateurs: this.utilisateurs, feuilles: this.feuilles, videos: this.videos }));
-    fs.renameSync(tmp, this.fichier);
+    if (this.stockage) {
+      this.stockage.ecrire({ utilisateurs: this.utilisateurs, feuilles: this.feuilles, videos: this.videos });
+    }
   }
 
-  // Nombre de rameaux visibles (la croissance) à cet instant
+  // Nombre de nœuds poussés à cet instant
   noeudsVisibles() {
-    return nbBranchesVisibles(this.utilisateurs.length, this.arbre.noeuds.length);
+    return nbVisibles(this.utilisateurs.length, this.arbre);
   }
 
   utilisateurParToken(jeton) {
@@ -85,9 +89,9 @@ export class Monde {
     }
 
     const utilisateur = {
-      id: crypto.randomUUID(),
+      id: uuid(),
       pseudo,
-      token: crypto.randomUUID(),
+      token: uuid(),
       teinte: (this.utilisateurs.length * 137.508) % 360, // angle d'or : des couleurs bien réparties
       creeLe: new Date().toISOString(),
     };
@@ -103,39 +107,41 @@ export class Monde {
       emplacement,
     };
     this.feuilles.push(feuille);
+    this.charge.set(noeud, (this.charge.get(noeud) || 0) + 1);
     this.sauver();
-    // Le monde d'abord (la branche doit être visible), puis la feuille
+    // Le monde d'abord (la branche doit être poussée), puis la feuille
     this.surChangement('monde', this.resume());
     this.surChangement('feuille', feuille);
     return { utilisateur, feuille, nouveau: true };
   }
 
-  // La feuille va sur la brindille visible la moins chargée.
+  // La feuille va sur la brindille poussée la moins chargée.
   // En cas d'égalité, le point de départ dépend de l'utilisateur : les feuilles se répartissent.
   choisirPlace(graine) {
     const K = this.noeudsVisibles();
-    const candidats = this.arbre.noeuds.filter((n) => n.genre === 'branche' && n.ordre < K);
-    if (candidats.length === 0) return { noeud: this.arbre.capitale, emplacement: 0 };
-    const charge = new Map();
-    for (const f of this.feuilles) charge.set(f.noeud, (charge.get(f.noeud) || 0) + 1);
-    const depart = empreinte(graine) % candidats.length;
-    let meilleur = null;
+    const { candidats, noeuds, capitale } = this.arbre;
+    // « candidats » est trié par rang : les nœuds déjà poussés forment le début du tableau
+    let m = 0;
+    while (m < candidats.length && noeuds[candidats[m]].rang < K) m++;
+    if (m === 0) return { noeud: capitale, emplacement: 0 };
+    const depart = empreinte(graine) % m;
+    let meilleur = -1;
     let meilleureCharge = Infinity;
-    for (let i = 0; i < candidats.length; i++) {
-      const c = candidats[(depart + i) % candidats.length];
-      const q = charge.get(c.id) || 0;
+    for (let i = 0; i < m; i++) {
+      const id = candidats[(depart + i) % m];
+      const q = this.charge.get(id) || 0;
       if (q < meilleureCharge) {
-        meilleur = c;
+        meilleur = id;
         meilleureCharge = q;
       }
     }
-    return { noeud: meilleur.id, emplacement: meilleureCharge };
+    return { noeud: meilleur, emplacement: meilleureCharge };
   }
 
   // Poids de chaque nœud : c'est lui qui fait gonfler les branches
   poids() {
-    const parNoeud = new Array(this.arbre.noeuds.length).fill(0);
-    for (const f of this.feuilles) parNoeud[f.noeud]++;
+    const parNoeud = new Array(this.arbre.N).fill(0);
+    for (const [id, q] of this.charge) parNoeud[id] = q;
     return calculerPoids(this.arbre.noeuds, parNoeud);
   }
 
@@ -143,12 +149,12 @@ export class Monde {
     return {
       utilisateurs: this.utilisateurs.length,
       noeudsVisibles: this.noeudsVisibles(),
-      noeudsTotal: this.arbre.noeuds.length,
+      noeudsTotal: this.arbre.N,
       poids: this.poids(),
     };
   }
 
-  // Tout ce qu'il faut pour dessiner le monde à l'arrivée d'un visiteur
+  // Tout ce qu'il faut pour afficher le monde à l'arrivée d'une personne
   instantane() {
     return { ...this.resume(), capitale: this.arbre.capitale, feuilles: this.feuilles };
   }
