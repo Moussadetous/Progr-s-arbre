@@ -1,5 +1,7 @@
 # 🐜 Zira et le Grand Arbre
 
+> 🌳 **Nouveau départ** : le prototype du réseau social 3D (« L'Arbre », chaque personne est une feuille) est dans le dossier [`arbre/`](arbre/). Ce jeu est l'ancien prototype, conservé comme référence.
+
 Un **jeu web mobile 3D d'exploration et d'émerveillement** : tu incarnes **Zira**, une petite fourmi qui voyage dans un arbre immense — branches, feuilles, canopée dorée, champignons lumineux et racines profondes.
 
 > Pas de combat, pas de chrono. Juste la beauté d'un monde à découvrir, comme une fourmi le voit.
