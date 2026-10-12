@@ -20,11 +20,14 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #1c1626; col
   background: rgba(255, 236, 200, .55); border: 2px solid rgba(255, 244, 226, .8); pointer-events: none; }
 @media (pointer: coarse) { .stick { display: block; } .aide { bottom: 190px; } }
 
-.dev { position: fixed; top: 10px; right: 10px; z-index: 6; display: flex; gap: 6px; align-items: center; font-size: 13px; }
-.dev button { font: inherit; font-weight: 700; color: var(--encre); padding: 4px 10px; border-radius: 10px; background: var(--verre); border: 1px solid var(--bord); cursor: pointer; }
 
 #toasts { position: fixed; right: 14px; top: 14px; display: grid; gap: 8px; width: min(300px, 80vw); z-index: 20; pointer-events: none; }
 .toast { padding: 9px 14px; font-weight: 700; background: var(--verre); border: 1px solid var(--bord); border-radius: 14px;
   backdrop-filter: blur(10px); animation: entre .3s ease-out; transition: opacity .4s, transform .4s; }
 .toast.sort { opacity: 0; transform: translateX(14px); }
 @keyframes entre { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+.hud { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.hud button { font: inherit; font-weight: 800; font-size: 16px; color: #3a2208; padding: 8px 18px; border-radius: 999px; border: 0; cursor: pointer;
+  background: linear-gradient(180deg, #ffd27a, #f0953f); box-shadow: 0 4px 18px rgba(0, 0, 0, .3); }
+.hud button.actif { background: linear-gradient(180deg, #b6f0a0, #4fbf5a); color: #0f2a0c; }
+.compteurs { padding: 3px 12px; font-size: 13px; font-weight: 700; background: var(--verre); border: 1px solid var(--bord); border-radius: 999px; backdrop-filter: blur(8px); white-space: nowrap; }

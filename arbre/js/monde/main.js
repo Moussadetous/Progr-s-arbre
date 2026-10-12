@@ -1,26 +1,29 @@
-// L'Arbre : un tronc, la capitale, 4 branches par défaut, une grande feuille par personne.
-// La boule, minuscule, est pilotée par la personne : clavier, manette analogique ou joystick tactile.
+// L'Arbre : la capitale au cœur du tronc, des branches qui sont des chemins, une feuille-maison par personne.
+// La boule, minuscule, se déplace avec la gravité sur le dessus des branches : clavier, manette, joystick tactile.
+// Le bouton « Faire grandir » simule des arrivées de plus en plus nombreuses pour voir l'arbre pousser.
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import {
-  Monde, framesVisibles, rayonTronc, pointFeuille, HAUTEUR_CAPITALE, RAYON_BOULE, azimutBranche, repereFeuille,
-} from '../../shared/monde-arbre.js';
-import { Marcheur, Y_PLACE } from '../../shared/marche.js';
-import { creerCiel } from './ciel.js';
-import { construireTube, materiauEcorce } from './tube.js';
-import { texturesEcorce, textureFeuille, textureBois } from './textures.js';
-import { CameraSurface } from './camera.js';
+import { Arbre, Y0, H_SALLE, rayonTronc } from '../../shared/arbre.js';
+import { Sol, RAYON_BOULE } from '../../shared/sol.js';
+import { Marcheur } from '../../shared/marche.js';
+import * as MAISON from '../../shared/maison.js';
+import { creerCiel, DIRECTION_SOLEIL } from './ciel.js';
+import { geometrieChemin, geometrieTronc, materiauEcorce } from './tube.js';
+import { texturesEcorce, textureHalo } from './textures.js';
+import { Maisons3d } from './maisons3d.js';
+import { creerCapitale } from './capitale3d.js';
+import { CameraBoule } from './camera.js';
 import { Commandes } from './commandes.js';
-import { v3 } from './utils.js';
 
 const params = new URLSearchParams(location.search);
 const qualite = ['basse', 'moyenne', 'haute'].includes(params.get('q')) ? params.get('q') : 'haute';
 const pause = params.has('pause');
 const el = (id) => document.getElementById(id);
 
+// ---------- rendu ----------
 const canvas = el('scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: qualite !== 'basse', powerPreference: 'high-performance', logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, qualite === 'haute' ? 1.5 : 1));
@@ -28,14 +31,13 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.95;
 renderer.shadowMap.enabled = qualite !== 'basse';
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(58, 1, 0.02, 3000);
+const camera = new THREE.PerspectiveCamera(58, 1, 0.03, 4000);
 let composer = null;
 if (qualite !== 'basse') {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  composer.addPass(new UnrealBloomPass(new THREE.Vector2(512, 512), 0.28, 0.5, 0.94));
+  composer.addPass(new UnrealBloomPass(new THREE.Vector2(512, 512), 0.3, 0.5, 0.92));
   composer.addPass(new OutputPass());
 }
 function redimensionner() {
@@ -49,253 +51,257 @@ function redimensionner() {
 window.addEventListener('resize', redimensionner);
 redimensionner();
 
-// ---------- décor ----------
+// ---------- le monde ----------
 const ciel = creerCiel(scene, { qualite });
-const monde = new Monde();
-const textures = texturesEcorce(512);
-const matEcorce = materiauEcorce(textures);
+const arbre = new Arbre();
+const sol = new Sol(arbre);
+const matEcorce = materiauEcorce(texturesEcorce());
+const capitale = creerCapitale(scene, matEcorce, arbre);
+const maisons = new Maisons3d(scene, arbre, { qualite });
 
-let maillageTronc = null;
-let hauteurTroncAffichee = 0;
-function batirTronc() {
-  const haut = monde.hauteurTronc();
-  if (haut === hauteurTroncAffichee) return;
-  hauteurTroncAffichee = haut;
-  if (maillageTronc) { scene.remove(maillageTronc); maillageTronc.geometry.dispose(); }
-  const bas = -320;
-  const n = Math.ceil((haut - bas) / 2);
-  const frames = [];
-  for (let i = 0; i <= n; i++) {
-    const y = bas + ((haut - bas) * i) / n;
-    let r = rayonTronc(y);
-    const u = (y - (haut - 9)) / 9;
-    if (u > 0) r *= Math.sqrt(Math.max(0, 1 - u * u)) + 0.02; // sommet arrondi
-    frames.push({ pos: [0, y, 0], tan: [0, 1, 0], N: [1, 0, 0], B: [0, 0, -1], rayon: r, s: y - bas });
-  }
-  maillageTronc = new THREE.Mesh(construireTube(frames, { radial: 64, repetitions: 14, grain: 4, bosses: 0.035, mousse: false }), matEcorce);
-  maillageTronc.castShadow = true;
-  maillageTronc.receiveShadow = true;
-  scene.add(maillageTronc);
-}
-
-const maillagesBranches = [];
-const nAffiches = [];
-function batirBranche(id) {
-  const b = monde.branches[id];
-  if (nAffiches[id] === b.n && maillagesBranches[id]) return;
-  nAffiches[id] = b.n;
-  if (maillagesBranches[id]) { scene.remove(maillagesBranches[id]); maillagesBranches[id].geometry.dispose(); }
-  const m = new THREE.Mesh(construireTube(framesVisibles(id, b.n), { radial: 40, repetitions: 7, grain: 2.6, bosses: 0.06 }), matEcorce);
-  m.castShadow = true;
-  m.receiveShadow = true;
-  scene.add(m);
-  maillagesBranches[id] = m;
-}
-
-// La capitale : un plancher rond autour du tronc, une porte lumineuse, des lanternes
-function batirCapitale() {
-  const bois = textureBois();
-  bois.repeat.set(10, 1);
-  const R = rayonTronc(HAUTEUR_CAPITALE);
-  const place = new THREE.Mesh(new THREE.CylinderGeometry(R + 4.2, R + 3.8, 0.55, 64), new THREE.MeshStandardMaterial({ map: bois, roughness: 0.8 }));
-  place.position.y = Y_PLACE - 0.275;
-  place.receiveShadow = true;
-  place.castShadow = true;
-  scene.add(place);
-  const rebord = new THREE.Mesh(new THREE.TorusGeometry(R + 4, 0.16, 8, 80), new THREE.MeshStandardMaterial({ color: 0x8a5a32, roughness: 0.7 }));
-  rebord.rotation.x = Math.PI / 2;
-  rebord.position.y = Y_PLACE + 0.5;
-  scene.add(rebord);
-  const lumiere = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.0, 0.62, 0.22).multiplyScalar(2.2), toneMapped: false });
-  const lanternes = new THREE.InstancedMesh(new THREE.SphereGeometry(0.28, 12, 9), lumiere, 8);
-  for (let k = 0; k < 8; k++) {
-    const th = azimutBranche(0) + (k * Math.PI) / 4 + Math.PI / 8;
-    lanternes.setMatrixAt(k, new THREE.Matrix4().makeTranslation(Math.cos(th) * (R + 4), Y_PLACE + 1.1, Math.sin(th) * (R + 4)));
-  }
-  scene.add(lanternes);
-  const th = azimutBranche(0) + Math.PI / 4;
-  const porte = new THREE.Mesh(
-    new THREE.CircleGeometry(1.6, 32),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color(1.0, 0.7, 0.3).multiplyScalar(1.8), toneMapped: false }),
-  );
-  porte.scale.set(1, 1.5, 1);
-  porte.position.set(Math.cos(th) * (R + 0.15), HAUTEUR_CAPITALE + 2.4, Math.sin(th) * (R + 0.15));
-  porte.lookAt(Math.cos(th) * 100, HAUTEUR_CAPITALE + 2.4, Math.sin(th) * 100);
-  scene.add(porte);
-  const clair = new THREE.PointLight(0xffa850, 90, 26, 1.6);
-  clair.position.set(Math.cos(th) * (R + 3), HAUTEUR_CAPITALE + 3, Math.sin(th) * (R + 3));
-  scene.add(clair);
-}
-batirCapitale();
-
-// Les feuilles : limbe et tige en instances
-const MAX_FEUILLES = 4000;
-function geoLimbe() {
-  const g = new THREE.PlaneGeometry(1, 1, 14, 28);
-  const p = g.attributes.position;
-  for (let i = 0; i < p.count; i++) {
-    const q = pointFeuille(p.getX(i) * 2, p.getY(i) + 0.5);
-    p.setXYZ(i, q[0], q[1], q[2]);
-  }
-  g.computeVertexNormals();
-  return g;
-}
-const limbes = new THREE.InstancedMesh(
-  geoLimbe(),
-  new THREE.MeshStandardMaterial({ map: textureFeuille(), roughness: 0.55, side: THREE.DoubleSide, emissive: 0x4a6a14, emissiveIntensity: 0.3 }),
-  MAX_FEUILLES,
+// le tronc : sous la capitale (jusque dans les nuages) et au-dessus (jusqu'à sa cime)
+const troncBas = new THREE.Mesh(
+  geometrieTronc(
+    Array.from({ length: 60 }, (_, i) => new THREE.Vector3(0, -330 + (i / 59) * (Y0 + 330), 0)),
+    Array.from({ length: 60 }, (_, i) => rayonTronc(-330 + (i / 59) * (Y0 + 330)) + 2.5 * Math.pow(1 - i / 59, 3)),
+    { radial: 80 },
+  ),
+  matEcorce,
 );
-limbes.count = 0;
-limbes.frustumCulled = false;
-limbes.castShadow = qualite !== 'basse';
-limbes.receiveShadow = qualite !== 'basse';
-const geoTige = new THREE.CylinderGeometry(0.045, 0.085, 1.5, 7);
-geoTige.rotateX(Math.PI / 2);
-geoTige.translate(0, 0.22, 0.7);
-const tiges = new THREE.InstancedMesh(geoTige, new THREE.MeshStandardMaterial({ color: 0x5b7a2c, roughness: 0.7 }), MAX_FEUILLES);
-tiges.count = 0;
-tiges.frustumCulled = false;
-scene.add(limbes, tiges);
+troncBas.castShadow = true;
+troncBas.receiveShadow = true;
+scene.add(troncBas);
+let troncHaut = null;
+let hauteurAffichee = 0;
+function batirTroncHaut() {
+  const haut = arbre.hauteurTronc();
+  if (Math.abs(haut - hauteurAffichee) < 0.5) return;
+  hauteurAffichee = haut;
+  if (troncHaut) { scene.remove(troncHaut); troncHaut.geometry.dispose(); }
+  const y0 = Y0 + H_SALLE;
+  const n = Math.ceil((haut - y0) / 2) + 1;
+  const pts = [];
+  const ray = [];
+  for (let i = 0; i < n; i++) {
+    const y = y0 + ((haut - y0) * i) / (n - 1);
+    const u = (y - (haut - 16)) / 16; // la cime s'arrondit en dôme moussu
+    pts.push(new THREE.Vector3(0, y, 0));
+    ray.push(u > 0 ? Math.max(0.05, rayonTronc(y) * Math.sqrt(Math.max(0, 1 - Math.pow(u, 2.2))) * (1 - 0.25 * u)) : rayonTronc(y));
+  }
+  troncHaut = new THREE.Mesh(geometrieTronc(pts, ray, { radial: 80, mousse: 0.5 }), matEcorce);
+  troncHaut.castShadow = true;
+  troncHaut.receiveShadow = true;
+  scene.add(troncHaut);
+}
 
-const matriceFeuille = new THREE.Matrix4();
-const echelle = new THREE.Matrix4();
-function ecrireFeuille(f) {
-  const r = monde.repereDe(f);
-  matriceFeuille.makeBasis(v3(r.x), v3(r.y), v3(r.z));
-  matriceFeuille.multiply(echelle.makeScale(r.ex, r.ey, r.ez));
-  matriceFeuille.setPosition(v3(r.origine));
-  limbes.setMatrixAt(f.indice, matriceFeuille);
-  tiges.setMatrixAt(f.indice, matriceFeuille);
-}
-function couleurFeuille(f) {
-  if (f.indice === 0) return new THREE.Color(1.15, 1.0, 0.55); // la feuille de la personne, un peu dorée
-  const h = (f.indice * 0.6180339) % 1;
-  return new THREE.Color().setHSL(0.2 + h * 0.12, 0.75, 0.82 + ((f.indice * 7) % 5) * 0.025);
-}
-function majFeuilles() {
-  for (const f of monde.feuilles) ecrireFeuille(f);
-  limbes.count = tiges.count = monde.feuilles.length;
-  limbes.instanceMatrix.needsUpdate = tiges.instanceMatrix.needsUpdate = true;
-  for (const f of monde.feuilles) limbes.setColorAt(f.indice, couleurFeuille(f));
-  if (limbes.instanceColor) limbes.instanceColor.needsUpdate = true;
+// les branches : reconstruites quand elles s'allongent (en poussant) ou s'épaississent
+const branches = new Map(); // id -> { mesh, Laff, Lconstruit, charge }
+function majBranches(dt, budget = 8) {
+  let refaites = 0;
+  const changes = [];
+  for (const c of arbre.chemins) {
+    let b = branches.get(c.id);
+    if (!b) {
+      b = { mesh: null, Laff: 0, Lconstruit: -1, charge: -1 };
+      branches.set(c.id, b);
+    }
+    const cible = c.type === 'pont' ? c.Lmax : c.Lvis;
+    if (b.Laff < cible) b.Laff = dt ? Math.min(cible, b.Laff + dt * Math.max(6, (cible - b.Laff) * 1.5)) : cible;
+    const chargeChange = b.charge !== c.charge();
+    if (chargeChange) changes.push(c.id);
+    if ((Math.abs(b.Laff - b.Lconstruit) > 0.25 || chargeChange) && refaites < budget && b.Laff > 0.5) {
+      const g = geometrieChemin(c, b.Laff);
+      if (b.mesh) { b.mesh.geometry.dispose(); b.mesh.geometry = g; } else {
+        b.mesh = new THREE.Mesh(g, matEcorce);
+        b.mesh.castShadow = qualite !== 'basse';
+        b.mesh.receiveShadow = qualite !== 'basse';
+        scene.add(b.mesh);
+      }
+      b.Lconstruit = b.Laff;
+      b.charge = c.charge();
+      refaites++;
+    }
+  }
+  return changes;
 }
 
 // ---------- la boule : minuscule ----------
 const boule = new THREE.Mesh(
-  new THREE.SphereGeometry(RAYON_BOULE, 24, 18),
-  new THREE.MeshPhysicalMaterial({ color: 0xf6f1e8, roughness: 0.35, clearcoat: 0.8, emissive: 0xffe2b0, emissiveIntensity: 0.3 }),
+  new THREE.SphereGeometry(RAYON_BOULE, 28, 20),
+  new THREE.MeshPhysicalMaterial({ color: 0xf6f1e8, roughness: 0.32, clearcoat: 0.8, emissive: 0xffe2b0, emissiveIntensity: 0.25 }),
 );
 boule.castShadow = true;
 scene.add(boule);
-// de loin, un point lumineux garde la boule visible
-const repere = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0xfff1cc, transparent: true, opacity: 0.0, depthTest: false, fog: false }));
-repere.renderOrder = 10;
-scene.add(repere);
+const reperage = new THREE.Sprite(new THREE.SpriteMaterial({ map: textureHalo(), color: 0xfff6dd, transparent: true, opacity: 0, depthTest: false, fog: false, blending: THREE.AdditiveBlending }));
+reperage.renderOrder = 10;
+scene.add(reperage);
 
-// ---------- état du jeu ----------
-const marcheur = new Marcheur(monde);
-const cam = new CameraSurface(camera);
+const marcheur = new Marcheur(sol);
+const cam = new CameraBoule(camera, sol);
 const commandes = new Commandes(canvas, { stick: el('stick'), knob: el('knob') });
-const position = new THREE.Vector3(); // position affichée (lissée)
-let vueArbre = false;
-let vueArbreAvant = 2.2;
+const position = new THREE.Vector3();
 
-function actualiser() {
-  batirTronc();
-  for (const b of monde.branches) batirBranche(b.id);
-  majFeuilles();
-  el('dev-info').textContent = `${monde.feuilles.length} feuilles · ${monde.branches.length} branches`;
-}
-function arriver() {
-  const { nouvelleBranche } = monde.ajouter();
-  if (nouvelleBranche) toast('🌿 Une nouvelle branche pousse sur le tronc');
-  actualiser();
-}
-function arriverN(n) { for (let i = 0; i < n; i++) arriver(); }
-
-function chezSoi() {
-  marcheur.poserSurFeuille(0);
-  const r = repereFeuille(monde.feuilles[0], monde.branches[0].n);
-  const n = v3(marcheur.normale());
-  cam.orienter(n, v3(r.z));
-  position.set(...marcheur.position());
+function chezMoi() {
+  const m = arbre.maisons[0];
+  const r = arbre.repereMaison(m);
+  const c = arbre.versMonde(r, MAISON.CENTRE_PLANCHER);
+  marcheur.poser(c[0], c[1] + 0.3, c[2]);
+  position.set(...marcheur.p);
+  cam.lacet = Math.atan2(-r.Z[2], -r.Z[0]); // on regarde vers la porte, vers le chemin
+  cam.tangage = 0.26;
+  cam.voulue = 2.2;
 }
 
+// La caméra ne passe pas à travers les feuilles-maisons
+const rayon = new THREE.Raycaster();
+function obstacleFeuilles(origine, direction, distance) {
+  rayon.set(origine, direction);
+  rayon.far = distance;
+  const h = rayon.intersectObject(maisons.feuilles, false)[0];
+  return h ? h.distance : Infinity;
+}
+
+// ---------- croissance ----------
+const croissance = { active: false, debit: 2, reste: 0, depuis: 0 };
+let derniersEvenements = 0;
+function arrivees(n, budgetMs = 14) {
+  const t0 = performance.now();
+  let faites = 0;
+  for (let i = 0; i < n; i++) {
+    if (!arbre.ajouter()) break;
+    faites++;
+    if (performance.now() - t0 > budgetMs) break;
+  }
+  if (faites) signalerEvenements();
+  return faites;
+}
+function signalerEvenements() {
+  const ev = arbre.evenements.slice(derniersEvenements);
+  derniersEvenements = arbre.evenements.length;
+  const n = { rameau: 0, etage: 0, pont: 0 };
+  for (const e of ev) n[e.type]++;
+  if (n.etage) toast(`⬆️ ${n.etage > 1 ? n.etage + ' nouvelles branches' : 'Une nouvelle branche'} plus haut sur le tronc, reliée par un pont`);
+  if (n.rameau) toast(`🌿 ${n.rameau > 1 ? n.rameau + ' rameaux poussent' : 'Un rameau pousse'}`);
+  if (n.pont) toast(`🌉 ${n.pont > 1 ? n.pont + ' nouveaux ponts' : 'Un pont'} entre des branches`);
+}
+function basculerCroissance(forcer) {
+  croissance.active = forcer ?? !croissance.active;
+  croissance.debit = 2;
+  croissance.depuis = 0;
+  el('btn-grandir').classList.toggle('actif', croissance.active);
+  el('btn-grandir').textContent = croissance.active ? '⏸ Pause' : '🌱 Faire grandir';
+}
+el('btn-grandir').addEventListener('click', () => basculerCroissance());
+
+function tailleArbre() {
+  let r = 60;
+  for (const c of arbre.chemins) {
+    const e = c.courbe.ech[Math.min(c.courbe.ech.length - 1, Math.round(c.Lvis / c.courbe.pas))];
+    r = Math.max(r, Math.hypot(e.p[0], e.p[2]));
+  }
+  return { rayon: r, hauteur: arbre.hauteurTronc() };
+}
+
+// ---------- interface ----------
 function toast(texte) {
   const t = document.createElement('div');
   t.className = 'toast';
   t.textContent = texte;
   el('toasts').appendChild(t);
   while (el('toasts').children.length > 3) el('toasts').firstElementChild.remove();
-  setTimeout(() => t.classList.add('sort'), 2800);
-  setTimeout(() => t.remove(), 3300);
+  setTimeout(() => t.classList.add('sort'), 2600);
+  setTimeout(() => t.remove(), 3100);
 }
-
-for (const b of document.querySelectorAll('[data-arrivee]')) b.addEventListener('click', () => arriverN(Number(b.dataset.arrivee)));
-if (params.has('dev')) el('dev').classList.remove('cache');
+function majCompteurs() {
+  const r = arbre.resume();
+  const p = r.maisons;
+  el('compteurs').textContent = `${p.toLocaleString('fr-FR')} ${p > 1 ? 'personnes' : 'personne'} · ${r.chemins - r.ponts} branches · ${r.ponts} ${r.ponts > 1 ? 'ponts' : 'pont'} · ${r.etages} ${r.etages > 1 ? 'étages' : 'étage'}`;
+}
 
 // ---------- boucle ----------
 const horloge = new THREE.Clock();
-const cible = new THREE.Vector3();
-const dir = new THREE.Vector3();
-const soleilDir = new THREE.Vector3();
-let derniereAide = performance.now();
+let temps = 0;
+let derniereAide = 0;
+let vueEnsemble = false;
+let distanceAvantVue = 1.7;
 
 function rendre(dt = 0) {
-  const t = performance.now() / 1000;
-  ciel.update(t);
+  temps += dt;
+  ciel.update(performance.now() / 1000);
+  capitale.update(temps);
   const c = commandes.lire();
-
-  // actions à touche unique
   for (const k of c.actions) {
+    if (k === 'g') basculerCroissance();
     if (k === 'v') {
-      vueArbre = !vueArbre;
-      if (vueArbre) { vueArbreAvant = cam.distanceVoulue; cam.distanceVoulue = 170 + monde.hauteurTronc() * 1.1; cam.tangage = 0.5; } else cam.distanceVoulue = vueArbreAvant;
+      vueEnsemble = !vueEnsemble;
+      if (vueEnsemble) { distanceAvantVue = cam.voulue; const t = tailleArbre(); cam.voulue = 40 + 1.5 * Math.max(t.rayon, t.hauteur * 0.8); cam.tangage = 0.42; } else cam.voulue = distanceAvantVue;
     }
-    if (k === 'h') { chezSoi(); vueArbre = false; cam.distanceVoulue = 2.4; toast('🍃 Tu es chez toi'); }
-    if (k === 'n') arriver();
-    if (k === 'm') arriverN(10);
+    if (k === 'h') { chezMoi(); vueEnsemble = false; basculerCroissance(false); toast('🍃 Tu es chez toi'); }
+    if (k === 'n') arrivees(1);
+    if (k === 'm') arrivees(10, 200);
   }
+  if (c.lacet || c.tangage) cam.tourner(c.lacet, c.tangage, temps);
+  if (c.zoom !== 1) { cam.zoomer(c.zoom); vueEnsemble = false; }
 
-  // regarder, zoomer
-  if (c.lacet || c.tangage) cam.tourner(c.lacet, c.tangage);
-  if (c.zoom !== 1) { cam.zoomer(c.zoom); vueArbre = false; }
+  // croissance automatique, de plus en plus rapide
+  if (croissance.active && dt) {
+    croissance.depuis += dt;
+    croissance.debit = Math.min(90, 2 * Math.pow(1.13, croissance.depuis));
+    croissance.reste += croissance.debit * dt;
+    const n = Math.floor(croissance.reste);
+    if (n > 0) croissance.reste -= arrivees(n);
+    croissance.reste = Math.min(croissance.reste, 5);
+    if (arbre.maisons.length >= 6000) { basculerCroissance(false); toast('Limite de la démonstration : 6 000 personnes'); }
+    // la caméra se recule pour voir l'arbre entier et tourne lentement autour
+    const t = tailleArbre();
+    cam.voulue += (40 + 1.5 * Math.max(t.rayon, t.hauteur * 0.8) - cam.voulue) * (1 - Math.exp(-dt * 0.8));
+    if (temps - cam.derniereRotation > 2) cam.lacet += dt * 0.07;
+    cam.tangage += (0.38 - cam.tangage) * (1 - Math.exp(-dt));
+  }
+  cam.centreArbre.set(0, Y0 + (arbre.hauteurTronc() - Y0) * 0.42, 0);
 
-  // marcher : la vitesse suit l'échelle de la vue (de près on avance à pas de fourmi, de loin on traverse)
-  if (dt > 0 && (c.mx || c.my)) {
+  // marcher
+  if (dt && (c.mx || c.my)) {
     const { avant, droite } = cam.axes();
-    dir.copy(avant).multiplyScalar(c.my).addScaledVector(droite, c.mx);
-    const vitesse = Math.min(26, Math.max(1.4, cam.distance * 1.9)) * (c.sprint ? 2.4 : 1);
-    dir.multiplyScalar(vitesse * dt);
-    marcheur.deplacer([dir.x, dir.y, dir.z]);
-    derniereAide = performance.now();
+    const vitesse = Math.min(30, Math.max(1.6, cam.distance * 1.5)) * (c.sprint ? 2.5 : 1);
+    const dx = (avant.x * c.my + droite.x * c.mx) * vitesse * dt;
+    const dz = (avant.z * c.my + droite.z * c.mx) * vitesse * dt;
+    const x0 = marcheur.p[0];
+    const z0 = marcheur.p[2];
+    marcheur.deplacer(dx, dz);
+    cam.suivreDirection(marcheur.p[0] - x0, marcheur.p[2] - z0, Math.max(0, c.my), dt, temps);
+    derniereAide = temps;
   }
-  if (performance.now() - derniereAide > 9000) el('aide').classList.add('fondu');
-  else el('aide').classList.remove('fondu');
+  el('aide').classList.toggle('fondu', temps - derniereAide > 10);
 
-  // la boule est lissée : les changements de surface glissent au lieu de sauter
-  cible.set(...marcheur.position());
-  position.lerp(cible, dt ? 1 - Math.exp(-dt * 26) : 1);
+  // le monde suit la croissance
+  const changes = majBranches(dt);
+  maisons.synchroniser(changes);
+  maisons.update(dt);
+  batirTroncHaut();
+  if (changes.length || croissance.active) majCompteurs();
+
+  // la boule, lissée
+  const cible = new THREE.Vector3(...marcheur.p);
+  position.lerp(cible, dt ? 1 - Math.exp(-dt * 30) : 1);
   boule.position.copy(position);
-  cam.suivreSurface(v3(marcheur.normale()), dt || 1);
-  cam.placer(position, dt || 1);
+  const appui = marcheur.appui && marcheur.appui.source;
+  cam.placer(position, dt || 1, { dansMaison: appui && appui.type === 'maison' ? appui.id : null, obstacleFeuilles });
 
-  // le repère lumineux grossit avec la distance : il ne se voit que de loin
   const d = camera.position.distanceTo(position);
-  repere.position.copy(position);
-  repere.scale.setScalar(Math.max(0.01, d * 0.012));
-  repere.material.opacity = Math.min(0.9, Math.max(0, (d - 12) / 40));
+  reperage.position.copy(position);
+  reperage.scale.setScalar(Math.max(0.01, d * 0.03));
+  reperage.material.opacity = Math.min(0.9, Math.max(0, (d - 14) / 40));
 
-  // l'ombre du soleil suit la boule : très précise de près, large de loin
+  // l'ombre du soleil suit la boule de près, couvre l'arbre de loin
   const s = ciel.soleil;
-  const e = Math.min(110, Math.max(10, d * 4));
-  const centre = d > 80 ? cible.set(8, monde.hauteurTronc() * 0.4, 0) : position;
-  soleilDir.set(0.55, 0.2, -0.62).normalize();
-  s.position.copy(centre).addScaledVector(soleilDir, 160);
+  const e = Math.min(260, Math.max(12, d * 3));
+  const centre = d > 60 ? cam.centreArbre : position;
+  s.position.copy(centre).addScaledVector(DIRECTION_SOLEIL, 400);
   s.target.position.copy(centre);
   s.target.updateMatrixWorld();
   const sc = s.shadow.camera;
-  if (sc.right !== e) { sc.left = -e; sc.right = e; sc.top = e; sc.bottom = -e; sc.updateProjectionMatrix(); }
+  if (Math.abs(sc.right - e) > 0.5) { sc.left = -e; sc.right = e; sc.top = e; sc.bottom = -e; sc.far = 900; sc.updateProjectionMatrix(); }
 
   if (composer) composer.render(dt);
   else renderer.render(scene, camera);
@@ -307,34 +313,41 @@ function boucle() {
 }
 
 // ---------- démarrage ----------
-arriver(); // la première personne : une seule feuille
-const n0 = Number(params.get('n') || 1);
-if (n0 > 1) arriverN(n0 - 1);
-chezSoi();
-if (params.get('vue') === 'arbre') { vueArbre = true; cam.distance = cam.distanceVoulue = 170 + monde.hauteurTronc() * 1.1; cam.tangage = 0.5; } else { cam.distance = cam.distanceVoulue = 2.6; }
+const n0 = Math.max(1, Number(params.get('n') || 1));
+arrivees(n0, 1e9);
+derniersEvenements = arbre.evenements.length;
+majBranches(0, 1e9);
+maisons.synchroniser();
+maisons.terminer();
+batirTroncHaut();
+majCompteurs();
+chezMoi();
 el('chargement').classList.add('cache');
 if (!pause) boucle();
 
-// Accès pour les tests automatiques
+// Accès pour les essais automatiques
 window.__monde = {
-  monde,
+  arbre,
+  sol,
   marcheur,
   cam,
   commandes,
-  arriver: (n = 1) => arriverN(n),
   rendre: (n = 1, dt = 0.016) => { for (let i = 0; i < n; i++) rendre(dt); },
-  // marcher dans une direction relative à la caméra (avant = +y, droite = +x) pendant une durée
-  marcher: (mx, my, secondes, dt = 0.05, sprint = false) => {
+  grandir: (n) => { arrivees(n, 1e9); majBranches(0, 1e9); maisons.synchroniser(arbre.chemins.map((c) => c.id)); maisons.terminer(); batirTroncHaut(); majCompteurs(); },
+  // marcher dans une direction relative à la caméra (avant = +y, droite = +x)
+  marcher: (mx, my, secondes, dt = 0.05) => {
     for (let i = 0; i < Math.ceil(secondes / dt); i++) {
       const { avant, droite } = cam.axes();
-      dir.copy(avant).multiplyScalar(my).addScaledVector(droite, mx);
-      const vitesse = Math.min(26, Math.max(1.4, cam.distance * 1.9)) * (sprint ? 2.4 : 1);
-      dir.multiplyScalar(vitesse * dt);
-      marcheur.deplacer([dir.x, dir.y, dir.z]);
-      cible.set(...marcheur.position());
-      cam.suivreSurface(v3(marcheur.normale()), dt);
+      const v = Math.min(30, Math.max(1.6, cam.distance * 1.5));
+      const x0 = marcheur.p[0];
+      const z0 = marcheur.p[2];
+      marcheur.deplacer((avant.x * my + droite.x * mx) * v * dt, (avant.z * my + droite.z * mx) * v * dt);
+      cam.suivreDirection(marcheur.p[0] - x0, marcheur.p[2] - z0, Math.max(0, my), dt, 1e9);
     }
-    position.set(...marcheur.position());
+    position.set(...marcheur.p);
   },
+  poser: (x, y, z, lacet) => { marcheur.poser(x, y, z); position.set(...marcheur.p); if (lacet !== undefined) cam.lacet = lacet; },
+  chezMoi,
+  vue: (distance, tangage, lacet) => { cam.voulue = cam.distance = distance; if (tangage !== undefined) cam.tangage = tangage; if (lacet !== undefined) cam.lacet = lacet; },
   pretes: true,
 };

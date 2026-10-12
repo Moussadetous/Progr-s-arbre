@@ -1,4 +1,5 @@
-// Textures générées dans le code (aucun fichier image) : écorce, feuille, bois, nuage, halo.
+// Textures générées dans le code (aucun fichier image) : écorce, feuille, bois, nuage, halo, écran.
+// Toutes les textures qui se répètent sont raccordées sans couture (bruit périodique, fréquences entières).
 import * as THREE from 'three';
 import { creerBruit, clamp } from './utils.js';
 
@@ -17,47 +18,53 @@ function texture(c, { couleur = true, repeter = false } = {}) {
   return t;
 }
 
-// Écorce vue de l'extérieur : longues crevasses verticales, plaques gris-brun, grain fin, lichens.
-// Renvoie la couleur et le relief. La texture couvre environ 4 m de côté une fois posée sur l'arbre.
-export function texturesEcorce(taille = 512) {
-  const bruit = creerBruit(11, 256);
-  const hauteur = new Float32Array(taille * taille);
-  const cc = canevas(taille, taille);
+const melange = (a, b, t) => a + (b - a) * t;
+const lisse = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+
+// Écorce vue de l'extérieur : de longues côtes fibreuses qui suivent la branche, séparées par des sillons
+// sombres, quelques cassures, un grain fin. Une tuile couvre environ 3 m de tour et 12 m de long.
+// u (largeur) : autour de la branche ; v (hauteur) : le long de la branche.
+export const TUILE_ECORCE = { tour: 3, long: 12 };
+export function texturesEcorce(L = 384, H = 1024) {
+  const P = 8; // période du bruit : la tuile va de 0 à 8 dans les deux sens
+  const bruit = creerBruit(11, P);
+  const hauteur = new Float32Array(L * H);
+  const cc = canevas(L, H);
   const gc = cc.getContext('2d');
-  const img = gc.createImageData(taille, taille);
-  const mix = (a, b, t) => a + (b - a) * t;
-  const fond = [28, 24, 22];
-  const plaqueSombre = [70, 62, 56];
-  const plaqueClaire = [120, 110, 100];
-  const lichen = [132, 142, 104];
-  for (let y = 0; y < taille; y++) {
-    for (let x = 0; x < taille; x++) {
-      const u = (x / taille) * 8;
-      const v = (y / taille) * 8;
-      // crevasses : lignes de crête du bruit, très étirées dans le sens du tronc, un peu tordues
-      const tord = (bruit.fbm(u * 0.5 + 20, v * 0.3 + 7, 2) - 0.5) * 1.6;
-      const crete = 1 - Math.abs(2 * bruit.fbm(u * 1.15 + tord, v * 0.14, 5) - 1);
-      const crevasse = Math.pow(crete, 5.5);
-      // coupures horizontales : les plaques se brisent par morceaux
-      const coupe = Math.pow(1 - Math.abs(2 * bruit.fbm(u * 0.9 + 60, v * 0.9 + 33, 3) - 1), 14) * 0.3;
-      const grain = bruit.fbm(u * 13, v * 2.4 + 5, 3);
-      const fin = bruit.fbm(u * 38, v * 9, 2);
-      const h = clamp(1 - crevasse * 0.95 - coupe + (grain - 0.5) * 0.28 + (fin - 0.5) * 0.1, 0, 1);
-      hauteur[y * taille + x] = h;
-      const plaque = clamp(h * 1.1 + (grain - 0.5) * 0.5, 0, 1);
-      let r = mix(plaqueSombre[0], plaqueClaire[0], plaque);
-      let g = mix(plaqueSombre[1], plaqueClaire[1], plaque);
-      let b = mix(plaqueSombre[2], plaqueClaire[2], plaque);
-      const ombre = clamp((crevasse + coupe) * 1.4, 0, 1);
-      r = mix(r, fond[0], ombre);
-      g = mix(g, fond[1], ombre);
-      b = mix(b, fond[2], ombre);
-      // lichens clairs, par plaques, sur le haut des plaques
-      const l = clamp((bruit.fbm(u * 2.6 + 90, v * 2.2 + 50, 4) - 0.64) * 6, 0, 1) * (1 - ombre) * clamp((fin - 0.3) * 3, 0, 1);
-      r = mix(r, lichen[0], l * 0.6);
-      g = mix(g, lichen[1], l * 0.6);
-      b = mix(b, lichen[2], l * 0.6);
-      const i = (y * taille + x) * 4;
+  const img = gc.createImageData(L, H);
+  const sillon = [36, 24, 16];
+  const cote = [104, 72, 46];
+  const clair = [148, 110, 74];
+  const gris = [118, 104, 92];
+  const COTES = 7; // côtes autour de la tuile
+  for (let y = 0; y < H; y++) {
+    const v = (y / H) * P;
+    for (let x = 0; x < L; x++) {
+      const u = (x / L) * P;
+      // les côtes serpentent doucement le long de la branche
+      const ondule = (bruit.fbm(u, v, 3) - 0.5) * 1.3;
+      const phase = (u / P) * COTES + ondule;
+      const f = phase - Math.floor(phase);
+      const profil = Math.pow(Math.sin(Math.PI * f), 0.55); // côtes arrondies, sillons étroits
+      // les côtes se fendent par endroits (plaques allongées)
+      const fente = lisse(0.68, 0.8, bruit(u * 2 + 31, v * 3 + 7)) * 0.55;
+      const fibres = bruit.fbm(u * 16, v * 2, 3);
+      const grain = bruit(u * 32, v * 8);
+      const h = clamp(profil * (1 - fente) + (fibres - 0.5) * 0.35 + (grain - 0.5) * 0.12, 0, 1);
+      hauteur[y * L + x] = h;
+      const teinte = bruit.fbm(u + 50, v + 20, 2);
+      let r = melange(cote[0], clair[0], clamp(h * 1.2 - 0.25 + (fibres - 0.5) * 0.6, 0, 1));
+      let g = melange(cote[1], clair[1], clamp(h * 1.2 - 0.25 + (fibres - 0.5) * 0.6, 0, 1));
+      let b = melange(cote[2], clair[2], clamp(h * 1.2 - 0.25 + (fibres - 0.5) * 0.6, 0, 1));
+      const gr = lisse(0.55, 0.75, teinte) * 0.45;
+      r = melange(r, gris[0], gr);
+      g = melange(g, gris[1], gr);
+      b = melange(b, gris[2], gr);
+      const creux = clamp(1 - h * 1.6, 0, 1);
+      r = melange(r, sillon[0], creux);
+      g = melange(g, sillon[1], creux);
+      b = melange(b, sillon[2], creux);
+      const i = (y * L + x) * 4;
       img.data[i] = r;
       img.data[i + 1] = g;
       img.data[i + 2] = b;
@@ -66,20 +73,20 @@ export function texturesEcorce(taille = 512) {
   }
   gc.putImageData(img, 0, 0);
 
-  // Relief : normales calculées à partir de la hauteur (filtre de Sobel)
-  const cn = canevas(taille, taille);
+  // Relief : normales calculées à partir de la hauteur (filtre de Sobel), raccordées aux bords
+  const cn = canevas(L, H);
   const gn = cn.getContext('2d');
-  const imn = gn.createImageData(taille, taille);
-  const H = (x, y) => hauteur[((y + taille) % taille) * taille + ((x + taille) % taille)];
-  const force = 7;
-  for (let y = 0; y < taille; y++) {
-    for (let x = 0; x < taille; x++) {
-      const dx = (H(x + 1, y - 1) + 2 * H(x + 1, y) + H(x + 1, y + 1)) - (H(x - 1, y - 1) + 2 * H(x - 1, y) + H(x - 1, y + 1));
-      const dy = (H(x - 1, y + 1) + 2 * H(x, y + 1) + H(x + 1, y + 1)) - (H(x - 1, y - 1) + 2 * H(x, y - 1) + H(x + 1, y - 1));
+  const imn = gn.createImageData(L, H);
+  const Ht = (x, y) => hauteur[((y + H) % H) * L + ((x + L) % L)];
+  const force = 5;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < L; x++) {
+      const dx = (Ht(x + 1, y - 1) + 2 * Ht(x + 1, y) + Ht(x + 1, y + 1)) - (Ht(x - 1, y - 1) + 2 * Ht(x - 1, y) + Ht(x - 1, y + 1));
+      const dy = (Ht(x - 1, y + 1) + 2 * Ht(x, y + 1) + Ht(x + 1, y + 1)) - (Ht(x - 1, y - 1) + 2 * Ht(x, y - 1) + Ht(x + 1, y - 1));
       const nx = -dx * force;
-      const ny = -dy * force;
+      const ny = dy * force;
       const l = Math.hypot(nx, ny, 1);
-      const i = (y * taille + x) * 4;
+      const i = (y * L + x) * 4;
       imn.data[i] = (nx / l * 0.5 + 0.5) * 255;
       imn.data[i + 1] = (ny / l * 0.5 + 0.5) * 255;
       imn.data[i + 2] = (1 / l * 0.5 + 0.5) * 255;
@@ -90,61 +97,61 @@ export function texturesEcorce(taille = 512) {
   return { map: texture(cc, { repeter: true }), normalMap: texture(cn, { couleur: false, repeter: true }) };
 }
 
-// Feuille : dégradé de verts, nervure centrale et nervures secondaires. u = largeur, v = longueur.
+// Feuille-maison : vert profond, nervure centrale claire, nervures secondaires vers la pointe,
+// bord légèrement doré. u : largeur (0..1), v : de la base (0) à la pointe (1).
 export function textureFeuille() {
-  const c = canevas(256, 512);
+  const L = 256;
+  const H = 768;
+  const c = canevas(L, H);
   const g = c.getContext('2d');
-  const d = g.createLinearGradient(0, 0, 0, 512);
-  d.addColorStop(0, '#2f6b24');
-  d.addColorStop(0.55, '#5fa83a');
-  d.addColorStop(1, '#9bd45a');
-  g.fillStyle = d;
-  g.fillRect(0, 0, 256, 512);
-  const bruit = creerBruit(5, 64);
-  const img = g.getImageData(0, 0, 256, 512);
-  for (let y = 0; y < 512; y++) {
-    for (let x = 0; x < 256; x++) {
-      const k = (bruit.fbm(x / 20, y / 20, 3) - 0.5) * 38;
-      const i = (y * 256 + x) * 4;
-      img.data[i] = clamp(img.data[i] + k * 0.6, 0, 255);
-      img.data[i + 1] = clamp(img.data[i + 1] + k, 0, 255);
-      img.data[i + 2] = clamp(img.data[i + 2] + k * 0.4, 0, 255);
+  const bruit = creerBruit(5, 32);
+  const img = g.createImageData(L, H);
+  for (let y = 0; y < H; y++) {
+    const v = 1 - y / H; // l'image est retournée : y = 0 en haut = pointe
+    for (let x = 0; x < L; x++) {
+      const u = x / L - 0.5; // -0.5 .. 0.5
+      const au = Math.abs(u) * 2;
+      const n = bruit.fbm((x / L) * 32, (y / H) * 32 * 3, 3);
+      // nervures secondaires : arcs qui partent de la nervure centrale vers le bord et la pointe
+      const phase = (v * 14 - au * 2.6) % 1;
+      const nervure = Math.pow(1 - Math.abs(((phase + 1) % 1) * 2 - 1), 18) * lisse(0.04, 0.2, au) * (1 - lisse(0.75, 0.98, au));
+      const centrale = Math.pow(clamp(1 - au / 0.035, 0, 1), 1.5);
+      let r = melange(46, 84, v * 0.5 + au * 0.4) + (n - 0.5) * 30;
+      let gg = melange(110, 150, v * 0.4 + au * 0.3) + (n - 0.5) * 40;
+      let b = melange(30, 46, v * 0.4) + (n - 0.5) * 16;
+      const dore = lisse(0.8, 1, au) * 0.5;
+      r = melange(r, 168, dore);
+      gg = melange(gg, 168, dore);
+      b = melange(b, 70, dore);
+      const veine = Math.max(nervure * 0.55, centrale * 0.85);
+      r = melange(r, 214, veine);
+      gg = melange(gg, 230, veine);
+      b = melange(b, 150, veine);
+      const i = (y * L + x) * 4;
+      img.data[i] = clamp(r, 0, 255);
+      img.data[i + 1] = clamp(gg, 0, 255);
+      img.data[i + 2] = clamp(b, 0, 255);
+      img.data[i + 3] = 255;
     }
   }
   g.putImageData(img, 0, 0);
-  g.strokeStyle = 'rgba(230,245,160,0.85)';
-  g.lineCap = 'round';
-  g.lineWidth = 6;
-  g.beginPath();
-  g.moveTo(128, 0);
-  g.lineTo(128, 512);
-  g.stroke();
-  g.lineWidth = 2.2;
-  g.strokeStyle = 'rgba(210,235,140,0.55)';
-  for (let y = 30; y < 500; y += 34) {
-    for (const s of [-1, 1]) {
-      g.beginPath();
-      g.moveTo(128, y);
-      g.quadraticCurveTo(128 + s * 50, y - 20, 128 + s * 118, y - 58);
-      g.stroke();
-    }
-  }
   return texture(c);
 }
 
-// Planches de bois chaud pour les planchers
+// Planches de bois chaud pour le plancher de la capitale (raccordées sans couture)
 export function textureBois() {
-  const c = canevas(256, 256);
+  const T = 256;
+  const c = canevas(T, T);
   const g = c.getContext('2d');
-  const bruit = creerBruit(23, 64);
-  const img = g.createImageData(256, 256);
-  for (let y = 0; y < 256; y++) {
+  const bruit = creerBruit(23, 4);
+  const img = g.createImageData(T, T);
+  for (let y = 0; y < T; y++) {
     const planche = Math.floor(y / 32);
-    const teinte = 0.82 + 0.18 * ((planche * 37) % 7) / 7;
-    for (let x = 0; x < 256; x++) {
-      const fil = bruit.fbm(x / 70 + planche * 3, y / 4, 3);
+    const teinte = 0.82 + (0.18 * ((planche * 37) % 7)) / 7;
+    for (let x = 0; x < T; x++) {
+      const fil = bruit.fbm((x / T) * 4 + planche, (y / T) * 4 * 8, 3);
       const joint = y % 32 < 2 ? 0.45 : 1;
-      const i = (y * 256 + x) * 4;
+      const i = (y * T + x) * 4;
       const t = (0.55 + 0.45 * fil) * teinte * joint;
       img.data[i] = 205 * t;
       img.data[i + 1] = 140 * t;
@@ -192,5 +199,40 @@ export function textureHalo() {
   d.addColorStop(1, 'rgba(255,150,60,0)');
   g.fillStyle = d;
   g.fillRect(0, 0, 128, 128);
+  return texture(c);
+}
+
+// Écran flottant de la capitale : un paysage du soir et un bouton lecture
+export function textureEcran(graine = 1) {
+  const L = 512;
+  const H = 300;
+  const c = canevas(L, H);
+  const g = c.getContext('2d');
+  const ciel = g.createLinearGradient(0, 0, 0, H);
+  const teintes = [['#3b3f8f', '#e98b6d', '#ffd08a'], ['#24527a', '#7fc2c9', '#f6e3a1'], ['#5b2c6f', '#d36b8c', '#ffc27a']][graine % 3];
+  ciel.addColorStop(0, teintes[0]);
+  ciel.addColorStop(0.6, teintes[1]);
+  ciel.addColorStop(1, teintes[2]);
+  g.fillStyle = ciel;
+  g.fillRect(0, 0, L, H);
+  g.fillStyle = 'rgba(30,20,40,0.55)';
+  g.beginPath();
+  g.moveTo(0, H);
+  for (let x = 0; x <= L; x += 16) g.lineTo(x, H * 0.72 - Math.sin(x / 60 + graine) * 18 - Math.sin(x / 23) * 6);
+  g.lineTo(L, H);
+  g.fill();
+  g.fillStyle = 'rgba(255,255,255,0.88)';
+  g.beginPath();
+  g.arc(L / 2, H / 2, 38, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = teintes[0];
+  g.beginPath();
+  g.moveTo(L / 2 - 12, H / 2 - 20);
+  g.lineTo(L / 2 + 22, H / 2);
+  g.lineTo(L / 2 - 12, H / 2 + 20);
+  g.fill();
+  g.strokeStyle = 'rgba(255,255,255,0.7)';
+  g.lineWidth = 6;
+  g.strokeRect(3, 3, L - 6, H - 6);
   return texture(c);
 }

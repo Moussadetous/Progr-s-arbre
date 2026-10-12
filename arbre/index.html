@@ -16,12 +16,12 @@
 <body>
   <canvas id="scene"></canvas>
   <div id="chargement" class="chargement">🌳 Création du monde…</div>
-  <div id="aide" class="aide">ZQSD / WASD / flèches : marcher · Maj : courir · glisser : regarder · molette : zoom · V : voir l'arbre · H : chez moi</div>
-  <div id="stick" class="stick" aria-label="Joystick"><div id="knob" class="knob"></div></div>
-  <div id="dev" class="dev cache">
-    <button data-arrivee="1">+1</button><button data-arrivee="10">+10</button><button data-arrivee="50">+50</button>
-    <span id="dev-info"></span>
+  <div id="aide" class="aide">ZQSD / WASD / flèches : marcher · Maj : courir · glisser : regarder · molette : zoom · V : voir l'arbre · H : chez moi · G : faire grandir</div>
+  <div class="hud">
+    <button id="btn-grandir">🌱 Faire grandir</button>
+    <div id="compteurs" class="compteurs"></div>
   </div>
+  <div id="stick" class="stick" aria-label="Joystick"><div id="knob" class="knob"></div></div>
   <div id="toasts"></div>
   <script type="module" src="./js/monde/main.js"></script>
 </body>
