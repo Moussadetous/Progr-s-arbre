@@ -2,120 +2,27 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>L'Arbre</title>
-  <meta name="description" content="Un réseau social en 3D : chaque personne est une feuille d'un arbre géant. Plus on est nombreux, plus l'arbre grandit.">
-  <meta name="theme-color" content="#4fb8ff">
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./css/style.css">
+  <link rel="stylesheet" href="./css/monde.css">
   <script type="importmap">
-    { "imports": { "three": "./vendor/three.module.js" } }
+    { "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
   </script>
 </head>
 <body>
   <canvas id="scene"></canvas>
-
-  <!-- Étiquettes : le nom de la boule, et la capitale -->
-  <div id="etiquette-boule" class="etiquette cache"></div>
-  <div id="etiquette-capitale" class="etiquette capitale">👑 Capitale</div>
-  <div id="bulle" class="bulle cache"></div>
-
-  <header id="hud" class="cache">
-    <div class="pastille" id="compte-texte">🍃 0 feuille</div>
-    <div class="mode" id="mode"></div>
-    <nav class="actions">
-      <button data-action="maison">🏠 Ma feuille</button>
-      <button data-action="capitale">👑 Capitale</button>
-      <button data-action="ecran">📺 Écran</button>
-      <button data-action="publier" class="principal">⬆ Publier</button>
-    </nav>
-  </header>
-
-  <!-- Aide sur les commandes, affichée après la connexion -->
-  <aside id="aide" class="aide cache">
-    <p><b>Ordinateur</b> : ZQSD ou flèches pour marcher · Maj pour courir · clic pour aller là · glisser pour tourner · molette pour zoomer</p>
-    <p><b>Téléphone</b> : glisse un doigt pour marcher · tape pour aller là · deux doigts pour tourner et zoomer</p>
-  </aside>
-
-  <!-- Connexion -->
-  <section id="connexion" class="ecran cache" aria-labelledby="titre-connexion">
-    <div class="carte-connexion">
-      <h1 id="titre-connexion">L'Arbre</h1>
-      <p class="accroche">Chacun est une feuille.<br>Plus on est nombreux, plus l'arbre grandit.</p>
-      <form id="form-connexion">
-        <label for="champ-pseudo">Ton pseudo</label>
-        <input id="champ-pseudo" type="text" maxlength="20" minlength="2" required autocomplete="nickname" placeholder="Ex : Léa">
-        <button id="bouton-entrer" class="principal" type="submit">🌱 Entrer dans l'arbre</button>
-        <p id="erreur-connexion" class="erreur" role="alert"></p>
-      </form>
-      <button id="bouton-regarder" class="discret" type="button">Regarder d'abord</button>
-    </div>
-  </section>
-
-  <!-- Vidéos : écran, capitale, ou la feuille d'une personne -->
-  <section id="panneau-videos" class="panneau cache" aria-labelledby="videos-titre">
-    <header class="entete">
-      <div>
-        <h2 id="videos-titre"></h2>
-        <p id="videos-sous-titre" class="sous"></p>
-      </div>
-      <button data-fermer="panneau-videos" class="rond" aria-label="Fermer">✕</button>
-    </header>
-    <div id="videos-liste" class="liste"></div>
-  </section>
-
-  <!-- Carte d'une feuille -->
-  <section id="carte-feuille" class="panneau carte cache" aria-labelledby="carte-titre">
-    <header class="entete">
-      <h2 id="carte-titre"></h2>
-      <button data-fermer="carte-feuille" class="rond" aria-label="Fermer">✕</button>
-    </header>
-    <p id="carte-texte" class="sous"></p>
-    <div class="actions">
-      <button id="carte-aller" class="principal" type="button">🐜 Aller ici</button>
-      <button id="carte-videos" type="button">🎬 Voir ses vidéos</button>
-    </div>
-  </section>
-
-  <!-- Publication -->
-  <section id="panneau-publier" class="panneau cache" aria-labelledby="publier-titre">
-    <header class="entete">
-      <div>
-        <h2 id="publier-titre">⬆ Publier une vidéo</h2>
-        <p class="sous">Elle part vers la capitale, visible de toutes les feuilles.</p>
-      </div>
-      <button data-fermer="panneau-publier" class="rond" aria-label="Fermer">✕</button>
-    </header>
-    <form id="form-publier">
-      <label for="champ-fichier">Fichier vidéo (150 Mo maximum)</label>
-      <input id="champ-fichier" type="file" accept="video/mp4,video/webm,video/quicktime,video/ogg">
-      <label for="champ-titre">Titre</label>
-      <input id="champ-titre" type="text" maxlength="120" placeholder="Le titre de ta vidéo">
-      <label for="champ-description">Description</label>
-      <textarea id="champ-description" rows="3" maxlength="500" placeholder="(facultatif)"></textarea>
-      <p id="publier-etat" class="erreur" role="status"></p>
-      <button id="bouton-publier" class="principal" type="submit">⬆ Publier</button>
-    </form>
-  </section>
-
-  <!-- Lecteur -->
-  <section id="panneau-lecteur" class="panneau lecteur cache" aria-labelledby="lecteur-titre">
-    <header class="entete">
-      <div>
-        <h2 id="lecteur-titre"></h2>
-        <p id="lecteur-meta" class="sous"></p>
-      </div>
-      <button data-fermer="panneau-lecteur" class="rond" aria-label="Fermer">✕</button>
-    </header>
-    <video id="lecteur-video" controls playsinline></video>
-    <p id="lecteur-description" class="sous"></p>
-  </section>
-
-  <div id="toasts" aria-live="polite"></div>
-
-  <script type="module" src="./js/main.js"></script>
+  <div id="chargement" class="chargement">🌳 Création du monde…</div>
+  <div id="aide" class="aide">ZQSD / WASD / flèches : marcher · Maj : courir · glisser : regarder · molette : zoom · V : voir l'arbre · H : chez moi</div>
+  <div id="stick" class="stick" aria-label="Joystick"><div id="knob" class="knob"></div></div>
+  <div id="dev" class="dev cache">
+    <button data-arrivee="1">+1</button><button data-arrivee="10">+10</button><button data-arrivee="50">+50</button>
+    <span id="dev-info"></span>
+  </div>
+  <div id="toasts"></div>
+  <script type="module" src="./js/monde/main.js"></script>
 </body>
 </html>

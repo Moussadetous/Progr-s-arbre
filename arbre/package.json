@@ -1,6 +1,6 @@
 {
   "name": "arbre",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "L'Arbre — réseau social 3D : chaque personne est une feuille d'un arbre géant",
   "private": true,
   "type": "module",
@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "start": "node server/index.js",
+    "start": "node server/statique.js",
     "test": "node --test"
   }
 }
